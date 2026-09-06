@@ -1119,6 +1119,20 @@ function lastCalendarDays(days, n) {
   return days.filter(d => d.date >= cutoff);
 }
 
+// "Trailing 90 days" is a request, not a description of what came back. When
+// the published daily means lag by months and realtime covers only the last few
+// weeks, the window filter returns those few weeks — and labelling that
+// "trailing 90 days" tells the reader something untrue about the chart they are
+// looking at. Describe the window that actually got plotted.
+function windowLabel(chartDays) {
+  const span = daysBetween(chartDays[chartDays.length - 1].date, chartDays[0].date) + 1;
+  const n = chartDays.length;
+  const dense = n >= span - 3;
+  if (span >= CHART_DAYS - 3 && dense) return `trailing ${CHART_DAYS} days`;
+  if (dense) return `trailing ${span} days — all that is published`;
+  return `trailing ${span} days, ${n} with data`;
+}
+
 function daysBetween(laterDate, earlierDate) {
   return Math.round(
     (new Date(laterDate + 'T12:00:00Z') - new Date(earlierDate + 'T12:00:00Z')) / 86400000
@@ -1287,7 +1301,7 @@ async function buildWaterLevelChart(name, label, days, stJulyAvg, isFirst, stati
   const decimals = (max - min) < 0.5 ? 3 : 2;
   const opts = chartFrame(
     `${name} — ${label}`,
-    `Water level, trailing ${CHART_DAYS} days · ${vsJulyStr}`,
+    `Water level, ${windowLabel(chartDays)} · ${vsJulyStr}`,
     'metres',
     (v) => Number(v).toFixed(decimals),
     xLabels
@@ -1302,7 +1316,7 @@ async function buildWaterLevelChart(name, label, days, stJulyAvg, isFirst, stati
     options: opts,
   });
 
-  const section = chartSection(`level-${stationId}`, buffer, isFirst, `${name} water level, trailing ${CHART_DAYS} days`);
+  const section = chartSection(`level-${stationId}`, buffer, isFirst, `${name} water level, ${windowLabel(chartDays)}`);
   const legend = stJulyAvg !== null
     ? `<div style="margin-top:4px;font-size:9px;color:#999;">
           <span style="display:inline-block;width:16px;border-top:2px solid #2D6A9F;vertical-align:middle;margin-right:4px;"></span>Daily level
@@ -1336,7 +1350,7 @@ async function buildSpreadChart(balaDays, balaJulyAvg, beauDays, beauJulyAvg) {
 
   const opts = chartFrame(
     'Beaumaris vs Bala — Water Level Spread',
-    `Trailing ${CHART_DAYS} days · now ${latestSpread >= 0 ? '+' : ''}${latestSpread.toFixed(1)} in · normalized to each station's July average`,
+    `${windowLabel(chartDays)[0].toUpperCase()}${windowLabel(chartDays).slice(1)} · now ${latestSpread >= 0 ? '+' : ''}${latestSpread.toFixed(1)} in · normalized to each station's July average`,
     'inches',
     (v) => (v > 0 ? '+' : '') + Number(v).toFixed(1),
     xLabels
@@ -1389,7 +1403,7 @@ async function buildFlowChart(name, label, days, isFirst, stationId) {
   const flowDecimals = max >= 10 ? 0 : 1;
   const opts = chartFrame(
     `${name} — ${label}`,
-    `River flow, trailing ${CHART_DAYS} days · ${latest.value.toFixed(1)} m³/s on ${fmtShort(latest)}`,
+    `River flow, ${windowLabel(chartDays)} · ${latest.value.toFixed(1)} m³/s on ${fmtShort(latest)}`,
     'm³/s',
     (v) => Number(v).toFixed(flowDecimals),
     xLabels
@@ -1418,7 +1432,7 @@ async function buildFlowChart(name, label, days, isFirst, stationId) {
     options: opts,
   });
 
-  return chartSection(`flow-${stationId}`, buffer, isFirst, `${name} river flow, trailing ${CHART_DAYS} days`);
+  return chartSection(`flow-${stationId}`, buffer, isFirst, `${name} river flow, ${windowLabel(chartDays)}`);
 }
 
 function txtRow(name, label, recentDays, stJulyAvg, lowWater) {
@@ -2112,7 +2126,7 @@ export {
   buildWaterLevelChart, buildFlowChart, buildSpreadChart,
   // pure helpers, exported for scripts/test.mjs
   filterOutliers, readingNDaysBack, median, poolAroundDay, addDays, toRecord,
-  lastCalendarDays, parseMurAscii,
+  lastCalendarDays, windowLabel, parseMurAscii,
   computeTodayTempStats, computeNextWeekTempForecast,
   daysBetween, ordinal, paddedBounds,
   // station tables, so the site generator labels gauges identically to the email

@@ -171,6 +171,38 @@ series at once. Note that "vs July avg" stays a deliberate **five-year**
 average even though the archive runs much deeper — widening it would silently
 redefine the headline number on both the email and the site.
 
+### The 2026 gap, and recovering it from email
+
+Environment Canada publishes its daily means one calendar year at a time,
+roughly seven months after that year ends: 2025 appeared in a single step on
+2026-07-23. The realtime feed retains about a month. Between them, nothing
+covers **2026-01-01 to 2026-06-06** at any gauge, which is the entire spring
+freshet. It will fill itself around July 2027, because every run re-requests the
+last five years and merges whatever comes back.
+
+Until then the daily emails are the only record of that period. Two scripts
+recover it:
+
+```bash
+# Export just these messages from Gmail via Takeout, then:
+python3 scripts/extract-email-levels.py Takeout/Mail/*.mbox -o data/email-levels.csv
+node scripts/merge-email-levels.mjs data/email-levels.csv          # dry run
+node scripts/merge-email-levels.mjs data/email-levels.csv --apply
+```
+
+The extractor is standard-library Python, since reading an mbox needs no
+dependencies there. The merge stays in Node, because the archive format and
+`mergeSeries` already live in `notify.mjs` and are covered by tests.
+
+The merge verifies before it writes. The emails also cover 2026-06-07 onward,
+where the archive already holds first-hand data, so that overlap tests the
+extraction: reproduce the days we can check, and the days we cannot become
+credible. A median disagreement over 2 cm, a thin overlap, or a reading outside
+the gauge's recorded range all refuse the merge outright.
+
+Email figures never overwrite existing values, and Environment Canada's official
+numbers supersede them automatically when 2026 is finally published.
+
 ## Data source
 
 All data comes from Environment Canada's MSC Open Data OGC API:

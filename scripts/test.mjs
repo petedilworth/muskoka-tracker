@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {
   filterOutliers, readingNDaysBack, median, poolAroundDay, addDays, toRecord,
   mergeSeries, parseMurAscii, computeNextWeekTempForecast, parseAnnualPeakFeatures,
+  windowLabel,
 } from '../notify.mjs';
 import {
   quantile, distribution, percentileOf, climatology, windowByDate,
@@ -509,6 +510,33 @@ test('an unrecognised data type falls back to units, then gives up', () => {
   ], '02EB015');
   assert.equal(peaksFor(hopeless, '02EB015', 'level'), null);
   assert.equal(peaksFor(hopeless, '02EB015', 'flow'), null);
+});
+
+// A chart labelled "trailing 90 days" while plotting three weeks is not a
+// cosmetic problem: it is the chart asserting coverage it does not have. This
+// is what the daily email did through spring 2026, when the published daily
+// means stopped at 2025-12-31 and only the realtime pool remained.
+const span = (from, to) => {
+  const out = [];
+  for (let d = from; d <= to; d = new Date(Date.parse(d + 'T12:00:00Z') + 86400000).toISOString().slice(0, 10)) {
+    out.push({ date: d, value: 1 });
+  }
+  return out;
+};
+
+test('a full window is described as the full window', () => {
+  assert.equal(windowLabel(span('2026-06-03', '2026-08-31')), 'trailing 90 days');
+});
+
+test('a short window says how short it really is', () => {
+  const label = windowLabel(span('2026-08-01', '2026-08-31'));
+  assert.equal(label, 'trailing 31 days — all that is published');
+  assert.ok(!label.includes('90'), 'must not claim 90 days it does not have');
+});
+
+test('a window with a hole in it reports both the span and the coverage', () => {
+  const holed = [...span('2026-06-03', '2026-06-10'), ...span('2026-08-20', '2026-08-31')];
+  assert.equal(windowLabel(holed), 'trailing 90 days, 20 with data');
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ', 0 failed'}`);

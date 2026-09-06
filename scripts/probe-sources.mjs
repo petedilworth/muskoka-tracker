@@ -300,6 +300,85 @@ async function probeEnvironmentCanada() {
     await pause(300);
   }
 
+  // How far back does the realtime pool actually reach? This matters more than
+  // it looks: the daily-mean series ends 2025-12-31, so realtime is the only
+  // thing that could cover spring 2026, and notify.mjs caps its paging at 20
+  // pages of 500 (10,000 features). At the ~4.5-minute sampling this station
+  // reports, 10,000 features is about 31 days — which is exactly how far back
+  // the first cached run reached. So "realtime only keeps ~30 days" and "our
+  // own cap truncated it at ~31 days" predict the identical observation, and
+  // nothing in the archive can tell them apart. Ask the API directly.
+  head('Environment Canada — realtime retention vs. our own paging cap');
+
+  // numberMatched is the server's total for the query, independent of limit or
+  // of how many pages we choose to walk. If it exceeds 10,000, our cap is the
+  // binding constraint and raising it recovers data.
+  const totalUrl = `${EC_BASE}/hydrometric-realtime/items?f=json&STATION_NUMBER=${EC_STATION}&limit=1`;
+  const total = await get(totalUrl);
+  if (!total.ok) {
+    console.log(`  total count: ${bad(`HTTP ${total.status || total.error}`)}`);
+  } else {
+    try {
+      const j = JSON.parse(total.text);
+      const matched = j.numberMatched ?? null;
+      console.log(`  numberMatched for ${EC_STATION}: ${matched === null ? dim('not reported') : ok(String(matched))}`);
+      if (typeof matched === 'number') {
+        console.log(matched > 10000
+          ? `    ${bad('our maxPages:20 x 500 = 10,000 cap is truncating this')} — raising it gets more`
+          : `    ${ok('under our 10,000 cap')} — the pool itself is the limit, not our paging`);
+      }
+    } catch (e) {
+      console.log(`  total count: ${dim('unparseable: ' + e.message)}`);
+    }
+  }
+  await pause(300);
+
+  // The oldest reading the pool holds, asked for directly rather than inferred
+  // by walking pages until they run out.
+  for (const [label, sort] of [['oldest', 'DATETIME'], ['newest', '-DATETIME']]) {
+    const r = await get(`${EC_BASE}/hydrometric-realtime/items?f=json&STATION_NUMBER=${EC_STATION}&limit=1&sortby=${sort}`);
+    if (!r.ok) {
+      console.log(`  ${label} reading: ${bad(`HTTP ${r.status || r.error}`)}`);
+      continue;
+    }
+    try {
+      const f = (JSON.parse(r.text).features || [])[0];
+      const p = f ? f.properties || {} : {};
+      console.log(`  ${label} reading: ${f ? ok(String(p.DATETIME ?? dim('no DATETIME field'))) : dim('no features')}`);
+      if (label === 'oldest' && f && p.DATETIME) {
+        const days = Math.round((Date.now() - new Date(p.DATETIME)) / 86400000);
+        console.log(`    retention: ${days} days`);
+        console.log(days > 60
+          ? `    ${ok('deeper than 30 days')} — spring 2026 may still be recoverable`
+          : `    ${dim('about a month, as documented')} — spring 2026 is gone from this collection`);
+      }
+    } catch (e) {
+      console.log(`  ${label} reading: ${dim('unparseable: ' + e.message)}`);
+    }
+    await pause(300);
+  }
+
+  // Does the collection accept a datetime range at all? If it does, backfilling
+  // becomes a bounded set of small requests instead of walking every page.
+  const rangeUrl = `${EC_BASE}/hydrometric-realtime/items?f=json&STATION_NUMBER=${EC_STATION}`
+    + `&datetime=2026-04-01T00:00:00Z/2026-04-08T00:00:00Z&limit=10`;
+  const range = await get(rangeUrl);
+  if (!range.ok) {
+    console.log(`  datetime range filter: ${bad(`HTTP ${range.status || range.error}`)} — unsupported, or the range is empty`);
+  } else {
+    try {
+      const j = JSON.parse(range.text);
+      const n = j.numberMatched ?? (j.features || []).length;
+      console.log(`  datetime range filter (first week of April 2026): ${ok('accepted')}, ${n} readings`);
+      console.log(n > 0
+        ? `    ${ok('SPRING 2026 IS AVAILABLE')} — the gap can be backfilled`
+        : `    ${dim('filter works but the window is empty')} — confirms the pool does not reach back that far`);
+    } catch (e) {
+      console.log(`  datetime range filter: ${dim('unparseable: ' + e.message)}`);
+    }
+  }
+  await pause(300);
+
   // The Water Office publishes per-station realtime archives separately from
   // the OGC API. Check the rules before considering it, same as for OPG.
   head('Water Office — historical realtime downloads');
