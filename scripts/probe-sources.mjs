@@ -42,7 +42,8 @@ function head(title) {
 
 // Report what robots.txt says about a path without pretending to be a full
 // parser — the point is to surface the rules for a human to read.
-async function robots(origin, path) {
+async function robots(origin, paths) {
+  const wanted = Array.isArray(paths) ? paths : [paths];
   const r = await get(`${origin}/robots.txt`);
   if (!r.ok) {
     console.log(`  robots.txt: ${bad(`HTTP ${r.status || r.error}`)} — treat as unknown, do not crawl`);
@@ -51,13 +52,19 @@ async function robots(origin, path) {
   const lines = r.text.split('\n').map(l => l.trim()).filter(Boolean);
   const disallows = lines.filter(l => /^disallow:/i.test(l));
   console.log(`  robots.txt: ${ok('found')}, ${lines.length} lines, ${disallows.length} Disallow rules`);
-  const relevant = disallows.filter(l => {
-    const p = l.split(':')[1]?.trim();
-    return p && (p === '/' || path.startsWith(p));
-  });
-  console.log(relevant.length
-    ? `  ${bad('DISALLOWED')} for ${path}: ${relevant.join(' | ')}`
-    : `  ${ok('no rule blocks')} ${path}`);
+  // Print the rules themselves. A count tells a reader nothing, and checking
+  // only the one path we happened to think of is how /search/ went unexamined
+  // while /download/ was cleared.
+  for (const d of disallows) console.log(dim(`    ${d}`));
+  for (const path of wanted) {
+    const relevant = disallows.filter(l => {
+      const rule = l.split(':')[1]?.trim();
+      return rule && (rule === '/' || path.startsWith(rule));
+    });
+    console.log(relevant.length
+      ? `  ${bad('DISALLOWED')} for ${path}: ${relevant.join(' | ')}`
+      : `  ${ok('no rule blocks')} ${path}`);
+  }
   const crawlDelay = lines.find(l => /^crawl-delay:/i.test(l));
   if (crawlDelay) console.log(`  ${crawlDelay}`);
 }
@@ -382,7 +389,7 @@ async function probeEnvironmentCanada() {
   // The Water Office publishes per-station realtime archives separately from
   // the OGC API. Check the rules before considering it, same as for OPG.
   head('Water Office — historical realtime downloads');
-  await robots('https://wateroffice.ec.gc.ca', '/download/');
+  await robots('https://wateroffice.ec.gc.ca', ['/download/', '/search/real_time_results_e.html']);
   // robots permits /download/, so look at what the page offers rather than
   // guessing an endpoint. Still reporting only: nothing is parsed or stored.
   // /search/historical_e.html searches HYDAT — the same source that stops at
@@ -398,6 +405,25 @@ async function probeEnvironmentCanada() {
       .map(m => m.replace(/.*href=["']/i, '').replace(/["']$/, '')))].slice(0, 8);
     console.log(`    form actions: ${forms.length ? forms.join(', ') : dim('none')}`);
     console.log(`    csv/download/services links: ${csv.length ? csv.join(', ') : dim('none')}`);
+    // What the form declares about itself. A request built from guessed
+    // parameter names is a request that has never run; these are the names the
+    // page actually submits, and any min/max on the date fields is the site's
+    // own statement of how far its realtime pool reaches.
+    const fields = [];
+    for (const tag of r.text.match(/<(?:input|select)\b[^>]*>/gi) || []) {
+      const attr = (name) => (tag.match(new RegExp(name + '=["\']([^"\']*)["\']', 'i')) || [])[1];
+      const name = attr('name');
+      if (!name || /^(csrf|_)/i.test(name)) continue;
+      const bits = [name];
+      const type = attr('type'); if (type) bits.push(type);
+      const value = attr('value'); if (value) bits.push(`= ${value}`);
+      const min = attr('min'), max = attr('max');
+      if (min || max) bits.push(`range ${min || '?'} … ${max || '?'}`);
+      fields.push(bits.join(' '));
+    }
+    const unique = [...new Set(fields)];
+    console.log(`    form fields: ${unique.length ? unique.slice(0, 14).join(' | ') : dim('none found')}`);
+
     // Retention is the whole question: how far back does the realtime pool go?
     const dates = [...new Set((r.text.match(/\b(19|20)\d{2}-\d{2}-\d{2}\b/g) || []))].sort();
     if (dates.length) console.log(`    dates mentioned on the page: ${dates[0]} … ${dates[dates.length - 1]}`);

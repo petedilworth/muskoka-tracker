@@ -518,16 +518,21 @@ function recordsPage(r) {
   };
 
   const gapInfo = r.meta.coverage;
+  const gapYear = gapInfo ? parseInt(gapInfo.to.substring(0, 4)) : null;
   const coverageNotice = !gapInfo ? '' : `<div class="notice">
     <strong>These records do not include this spring.</strong>
     Every gauge is missing ${escDate(gapInfo.commonFrom)} to ${escDate(gapInfo.to)}${
       gapInfo.worstFrom !== gapInfo.commonFrom
         ? `, and most are missing back to ${escDate(gapInfo.worstFrom)}`
         : ''}.
-    Environment Canada publishes its daily-mean series on a lag of a year or
-    more, and this site only began keeping its own readings on
-    ${escDate(addDays(gapInfo.to, 1))}. A high-water event inside that window would
-    not appear below. The gap fills itself once Environment Canada publishes.
+    Environment Canada publishes its daily-mean series one calendar year at a
+    time, well after that year ends, and this site only began keeping its own
+    readings on ${escDate(addDays(gapInfo.to, 1))}. A high-water event inside that
+    window would not appear below. Nothing can bridge it in the meantime: the
+    realtime feed keeps 30 days, and the annual peak, annual statistic and
+    monthly mean series all stop where the daily means do. The gap fills itself
+    when ${gapYear} is published, expected around July ${gapYear + 1} — ${gapYear - 1}
+    landed in a single step in July ${gapYear}.
   </div>`;
 
   const body = `
@@ -600,7 +605,7 @@ function recordsPage(r) {
     <p>Coverage is very uneven. Port Sydney's flow gauge has run since 1915, so its record low genuinely survived a century. Three other flow gauges only start in 2021, so their "records" describe about five years.</p>
     <p>Every row above carries its period of record for that reason. A record high off five years and one off a hundred are not the same claim, and nothing here averages them together.</p>
     <p>Most figures here are daily means published by Environment and Climate Change Canada, so a brief peak within a day is smoothed away. Where a crest column appears, that is the instantaneous annual maximum from Environment Canada's own peaks record — the number a flood is actually remembered by — and it is not comparable to a daily average. Temperatures are satellite surface readings, not a thermometer in the water.</p>
-    <p><strong>The published series also lags.</strong> Environment Canada releases each station's daily means on its own schedule, often a year or more behind, and this site's own record only starts when it began caching readings. That leaves the window named at the top of this page with no data at all, so any peak inside it is absent from every figure here. Nothing on this page is wrong about the days it can see; it simply cannot see those days. The gap closes on its own as the daily means are published, because each run re-requests the last five years rather than only new dates.</p>`)}`;
+    <p><strong>The published series also lags.</strong> Environment Canada releases each station's daily means on its own schedule, often a year or more behind, and this site's own record only starts when it began caching readings. That leaves the window named at the top of this page with no data at all, so any peak inside it is absent from every figure here. Nothing on this page is wrong about the days it can see; it simply cannot see those days. The gap closes on its own as the daily means are published, because each run re-requests the last five years rather than only new dates. Publication happens a whole calendar year at a time rather than gradually, so the window will not narrow first — it will close all at once.</p>`)}`;
 
   return page({
     file: 'records.html', title: 'Muskoka Tracker — records',

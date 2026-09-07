@@ -117,11 +117,24 @@ async function fetchAllFeatures(buildUrl, maxPages = 20) {
   if (!featureCache.has(key)) {
     const p = (async () => {
       let all = [];
+      // The server reports the full size of the result set independently of
+      // how many pages we choose to walk. Keep it, so running out of pages
+      // cannot pass for reaching the end of the data — a cap that truncates
+      // silently is indistinguishable from an API that has nothing more, and
+      // that ambiguity cost two days of chasing the wrong explanation for a
+      // missing spring.
+      let matched = null;
       for (let page = 0; page < maxPages; page++) {
         const data = await fetchJSON(buildUrl(size, page * size));
+        if (page === 0 && Number.isFinite(data.numberMatched)) matched = data.numberMatched;
         const feats = data.features || [];
         all = all.concat(feats);
         if (feats.length < size) break;
+      }
+      if (matched !== null && all.length < matched) {
+        console.log(`    TRUNCATED: got ${all.length} of ${matched} features — `
+          + `maxPages=${maxPages} at ${size}/page caps this at ${maxPages * size}. `
+          + `Raise it or narrow the query.`);
       }
       return all;
     })();
