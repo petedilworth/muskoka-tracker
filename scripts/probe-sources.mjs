@@ -390,57 +390,94 @@ async function probeEnvironmentCanada() {
   // the OGC API. Check the rules before considering it, same as for OPG.
   head('Water Office — historical realtime downloads');
   await robots('https://wateroffice.ec.gc.ca', ['/download/', '/search/real_time_results_e.html']);
-  // robots permits /download/, so look at what the page offers rather than
-  // guessing an endpoint. Still reporting only: nothing is parsed or stored.
+
   // /search/historical_e.html searches HYDAT — the same source that stops at
   // 2025, so it cannot hold spring 2026. Water Office keeps a separate realtime
   // pool with its own retention, which is the only part worth chasing.
-  for (const path of ['/search/real_time_e.html', '/download/index_e.html']) {
-    const r = await get('https://wateroffice.ec.gc.ca' + path);
-    console.log(`  ${path}: ${r.ok ? ok(`HTTP ${r.status}`) : bad(`HTTP ${r.status || r.error}`)}`);
-    if (!r.ok) continue;
+  //
+  // The search page turned out to be a station *finder*: it declares no date
+  // inputs at all, only radios choosing how to name a station, and hands off to
+  // the results page. So the date range, if one exists, lives on the results
+  // page for a specific station — which is why that URL is requested here,
+  // built from the parameter names the finder actually declares.
+  const WO = 'https://wateroffice.ec.gc.ca';
+
+  // Every federal page carries the same canada.ca search box. Its fields say
+  // nothing about this service and crowded out the ones that do.
+  const SITE_SEARCH_FIELDS = new Set(['cdn', 'st', 'num', 'langs', 'st1rt', 's5bm3ts21rch', 'q']);
+
+  async function reportPage(url, note) {
+    const r = await get(url);
+    const shown = url.replace(WO, '');
+    console.log(`  ${shown}: ${r.ok ? ok(`HTTP ${r.status}`) : bad(`HTTP ${r.status || r.error}`)}`
+      + (note ? dim(` — ${note}`) : ''));
+    if (!r.ok) return;
+
     const forms = [...new Set((r.text.match(/<form[^>]*action=["']([^"']+)["']/gi) || [])
       .map(m => m.replace(/.*action=["']/i, '').replace(/["']$/, '')))].slice(0, 8);
     const csv = [...new Set((r.text.match(/href=["']([^"']*(?:csv|download|services)[^"']*)["']/gi) || [])
-      .map(m => m.replace(/.*href=["']/i, '').replace(/["']$/, '')))].slice(0, 8);
+      .map(m => m.replace(/.*href=["']/i, '').replace(/["']$/, '')))]
+      .filter(h => !h.includes('canada.ca/en/services'))   // federal nav, not data
+      .slice(0, 8);
     console.log(`    form actions: ${forms.length ? forms.join(', ') : dim('none')}`);
-    console.log(`    csv/download/services links: ${csv.length ? csv.join(', ') : dim('none')}`);
+    console.log(`    download links: ${csv.length ? ok(csv.join(', ')) : dim('none')}`);
+
     // What the form declares about itself. A request built from guessed
     // parameter names is a request that has never run; these are the names the
-    // page actually submits, and any min/max on the date fields is the site's
-    // own statement of how far its realtime pool reaches.
+    // page actually submits, and any min/max on a date field is the site's own
+    // statement of how far its realtime pool reaches.
     const fields = [];
     for (const tag of r.text.match(/<(?:input|select)\b[^>]*>/gi) || []) {
       const attr = (name) => (tag.match(new RegExp(name + '=["\']([^"\']*)["\']', 'i')) || [])[1];
       const name = attr('name');
-      if (!name || /^(csrf|_)/i.test(name)) continue;
+      if (!name || /^(csrf|_)/i.test(name) || SITE_SEARCH_FIELDS.has(name)) continue;
       const bits = [name];
       const type = attr('type'); if (type) bits.push(type);
       const value = attr('value'); if (value) bits.push(`= ${value}`);
       const min = attr('min'), max = attr('max');
-      if (min || max) bits.push(`range ${min || '?'} … ${max || '?'}`);
+      if (min || max) bits.push(bad(`range ${min || '?'} … ${max || '?'}`));
       fields.push(bits.join(' '));
     }
     const unique = [...new Set(fields)];
-    console.log(`    form fields: ${unique.length ? unique.slice(0, 14).join(' | ') : dim('none found')}`);
+    console.log(`    form fields: ${unique.length ? unique.slice(0, 16).join(' | ') : dim('none beyond the site search')}`);
 
-    // Retention is the whole question: how far back does the realtime pool go?
+    // Every date-shaped string in the markup, footers and banners included.
+    // Two distinct dates repeated across unrelated pages is page furniture; a
+    // long list is data. Saying which is which matters — an earlier run
+    // reported the same pair here and on the downloads index, and reading that
+    // as a retention bound is what sent this whole thread down a false trail.
     const dates = [...new Set((r.text.match(/\b(19|20)\d{2}-\d{2}-\d{2}\b/g) || []))].sort();
-    if (dates.length) console.log(`    dates mentioned on the page: ${dates[0]} … ${dates[dates.length - 1]}`);
+    if (dates.length) {
+      console.log(`    ${dates.length} distinct dates in the page text`
+        + ` (${dates[0]} … ${dates[dates.length - 1]})`
+        + dim(dates.length <= 3 ? ' — too few to be data; likely page furniture' : ''));
+    }
     await pause(500);
   }
 
+  await reportPage(WO + '/search/real_time_e.html', 'the station finder');
+  await reportPage(WO + '/download/index_e.html');
+  await reportPage(
+    WO + '/search/real_time_results_e.html?search_type=station_number&station_number=02EB015',
+    'Bala results — a date input with a min before 2026-06-07 would be the route in'
+  );
+
   // MSC Datamart is explicitly open data and publishes hydrometric CSVs
-  // directly, with no form to drive.
+  // directly, with no form to drive. Both paths guessed earlier returned 404,
+  // so list the directories instead of guessing a third time. Expectations are
+  // low either way: Datamart mirrors the same realtime pool that keeps 30 days.
   head('MSC Datamart — dd.weather.gc.ca hydrometric CSVs');
-  for (const path of ['/hydrometric/csv/ON/daily/', '/hydrometric/csv/ON/hourly/']) {
+  for (const path of ['/hydrometric/', '/']) {
     const r = await get('https://dd.weather.gc.ca' + path);
     console.log(`  ${path}: ${r.ok ? ok(`HTTP ${r.status}`) : bad(`HTTP ${r.status || r.error}`)}`);
     if (!r.ok) continue;
-    const ours = [...new Set((r.text.match(/href=["']([^"']*02EB015[^"']*)["']/gi) || [])
-      .map(m => m.replace(/.*href=["']/i, '').replace(/["']$/, '')))].slice(0, 5);
-    const all = (r.text.match(/href=["'][^"']*\.csv["']/gi) || []).length;
-    console.log(`    ${all} csv files listed; for 02EB015: ${ours.length ? ok(ours.join(', ')) : dim('none')}`);
+    const dirs = [...new Set((r.text.match(/href=["']([^"']+\/)["']/gi) || [])
+      .map(m => m.replace(/.*href=["']/i, '').replace(/["']$/, '')))]
+      .filter(d => !d.startsWith('/') && !d.startsWith('http'))
+      .slice(0, 24);
+    const csvs = (r.text.match(/href=["'][^"']*\.csv["']/gi) || []).length;
+    console.log(`    directories: ${dirs.length ? dirs.join(' ') : dim('none listed')}`);
+    if (csvs) console.log(`    ${csvs} csv files at this level`);
     await pause(400);
   }
 }
