@@ -413,8 +413,14 @@ async function probeEnvironmentCanada() {
       + (note ? dim(` — ${note}`) : ''));
     if (!r.ok) return;
 
-    const forms = [...new Set((r.text.match(/<form[^>]*action=["']([^"']+)["']/gi) || [])
-      .map(m => m.replace(/.*action=["']/i, '').replace(/["']$/, '')))].slice(0, 8);
+    // Method as well as action. This is a multi-step form and each page hands
+    // off to the next, so knowing the verb is what makes the next hop a
+    // declared request rather than a guessed one.
+    const forms = [...new Set((r.text.match(/<form\b[^>]*>/gi) || []).map(tag => {
+      const attr = (n) => (tag.match(new RegExp(n + '=["\']([^"\']*)["\']', 'i')) || [])[1];
+      const action = attr('action');
+      return action ? `${(attr('method') || 'get').toLowerCase()} ${action}` : null;
+    }).filter(Boolean))].slice(0, 8);
     const csv = [...new Set((r.text.match(/href=["']([^"']*(?:csv|download|services)[^"']*)["']/gi) || [])
       .map(m => m.replace(/.*href=["']/i, '').replace(/["']$/, '')))]
       .filter(h => !h.includes('canada.ca/en/services'))   // federal nav, not data
@@ -435,7 +441,14 @@ async function probeEnvironmentCanada() {
       const type = attr('type'); if (type) bits.push(type);
       const value = attr('value'); if (value) bits.push(`= ${value}`);
       const min = attr('min'), max = attr('max');
-      if (min || max) bits.push(bad(`range ${min || '?'} … ${max || '?'}`));
+      if (min || max) {
+        // Highlight only where a range could answer the retention question.
+        // The coordinate search declares degree and minute bounds, and painting
+        // those red buries the one range that would matter.
+        const dateish = /date|time|period|year/i.test(name) || /^date/i.test(type || '');
+        const label = `range ${min || '?'} … ${max || '?'}`;
+        bits.push(dateish ? bad(label) : dim(label));
+      }
       fields.push(bits.join(' '));
     }
     const unique = [...new Set(fields)];
@@ -461,24 +474,47 @@ async function probeEnvironmentCanada() {
     WO + '/search/real_time_results_e.html?search_type=station_number&station_number=02EB015',
     'Bala results — a date input with a min before 2026-06-07 would be the route in'
   );
+  // The results page carries no date range either. It is a station picker whose
+  // Download button relays the selection onward, so the range — if there is one
+  // — lives a step further in. Every parameter here is copied from the fields
+  // that page declares: results_type, the check[] value encoding the station,
+  // and the name of the submit button that leads to a download.
+  await reportPage(
+    WO + '/search/relay_e.html?results_type=real_time&check%5B%5D=02EB015%2C1%2C%2C%2C&download=Download',
+    'the download step — third hop; if this has no date range either, Water Office is out'
+  );
 
   // MSC Datamart is explicitly open data and publishes hydrometric CSVs
   // directly, with no form to drive. Both paths guessed earlier returned 404,
   // so list the directories instead of guessing a third time. Expectations are
   // low either way: Datamart mirrors the same realtime pool that keeps 30 days.
   head('MSC Datamart — dd.weather.gc.ca hydrometric CSVs');
-  for (const path of ['/hydrometric/', '/']) {
+  const listDir = async (path) => {
     const r = await get('https://dd.weather.gc.ca' + path);
     console.log(`  ${path}: ${r.ok ? ok(`HTTP ${r.status}`) : bad(`HTTP ${r.status || r.error}`)}`);
-    if (!r.ok) continue;
+    if (!r.ok) return [];
     const dirs = [...new Set((r.text.match(/href=["']([^"']+\/)["']/gi) || [])
       .map(m => m.replace(/.*href=["']/i, '').replace(/["']$/, '')))]
-      .filter(d => !d.startsWith('/') && !d.startsWith('http'))
-      .slice(0, 24);
+      .filter(d => !d.startsWith('/') && !d.startsWith('http'));
     const csvs = (r.text.match(/href=["'][^"']*\.csv["']/gi) || []).length;
-    console.log(`    directories: ${dirs.length ? dirs.join(' ') : dim('none listed')}`);
+    console.log(`    ${dirs.length} directories${dirs.length ? ': ' + dirs.slice(0, 20).join(' ') : ''}`);
     if (csvs) console.log(`    ${csvs} csv files at this level`);
     await pause(400);
+    return dirs;
+  };
+
+  const top = await listDir('/');
+  // The root is stamped by date, which is itself the answer about retention:
+  // count the day directories and read the oldest. Then look inside the newest
+  // for where hydrometric actually lives, rather than guessing a path again.
+  const days = top.filter(d => /^\d{8}\/$/.test(d)).sort();
+  if (days.length) {
+    console.log(`  ${days.length} dated directories, ${days[0]} … ${days[days.length - 1]}`);
+    console.log(dim('    the archive is a rolling window of days, so its depth is its retention'));
+    const inside = await listDir('/' + days[days.length - 1]);
+    const hydro = inside.find(d => /hydro/i.test(d));
+    if (hydro) await listDir('/' + days[days.length - 1] + hydro);
+    else console.log(dim('    no hydrometric directory inside — this feed does not carry it'));
   }
 }
 
