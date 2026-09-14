@@ -2131,6 +2131,15 @@ const invokedDirectly = process.argv[1]
 if (invokedDirectly) {
   main().catch(err => {
     console.error('❌ Error:', err.message);
+    // Put the failure on the run's summary page and in the checks API, where it
+    // can be read without opening the step log. The send failed for eleven
+    // straight days before anyone noticed: the fetches all succeeded, the
+    // archive kept updating, and the daily commits looked healthy.
+    if (process.env.GITHUB_ACTIONS) {
+      const oneLine = (v) => String(v).replace(/\r/g, '').replace(/\n/g, '%0A');
+      console.log(`::error title=Daily notification failed::${oneLine(err.message)}`);
+      if (err.stack) console.log(`::group::stack\n${err.stack}\n::endgroup::`);
+    }
     process.exit(1);
   });
 }

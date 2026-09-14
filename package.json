@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node scripts/test.mjs",
-    "build:site": "node scripts/build-site.mjs"
+    "build:site": "node scripts/build-site.mjs",
+    "smoke": "RESEND_API_KEY=stub EMAIL_TO=smoke@example.invalid node --import ./scripts/stub-network.mjs notify.mjs"
   },
   "engines": {
     "node": ">=20.9.0"
