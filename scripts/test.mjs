@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {
   filterOutliers, readingNDaysBack, median, poolAroundDay, addDays, toRecord,
   mergeSeries, parseMurAscii, computeNextWeekTempForecast, parseAnnualPeakFeatures,
-  windowLabel,
+  windowLabel, validFrom,
 } from '../notify.mjs';
 import {
   quantile, distribution, percentileOf, climatology, windowByDate,
@@ -537,6 +537,24 @@ test('a short window says how short it really is', () => {
 test('a window with a hole in it reports both the span and the coverage', () => {
   const holed = [...span('2026-06-03', '2026-06-10'), ...span('2026-08-20', '2026-08-31')];
   assert.equal(windowLabel(holed), 'trailing 90 days, 20 with data');
+});
+
+// Resend rejects any From line that is not a bare address or "Name <address>".
+// The EMAIL_FROM secret held something else for eleven days and every send
+// failed with a 422. These are the shapes a hand-edited secret actually takes.
+test('well-formed senders are accepted', () => {
+  assert.ok(validFrom('onboarding@resend.dev'));
+  assert.ok(validFrom('Muskoka Tracker <onboarding@resend.dev>'));
+  assert.ok(validFrom('  Muskoka Tracker <onboarding@resend.dev>\n'), 'a pasted trailing newline must not count');
+});
+
+test('the shapes a mistyped secret takes are rejected', () => {
+  assert.ok(!validFrom('Muskoka Tracker'), 'a name with no address');
+  assert.ok(!validFrom('Muskoka Tracker onboarding@resend.dev'), 'missing angle brackets');
+  assert.ok(!validFrom('<onboarding@resend.dev>'), 'brackets with no name');
+  assert.ok(!validFrom('Muskoka Tracker <onboarding@resend.dev'), 'unclosed bracket');
+  assert.ok(!validFrom(''), 'empty');
+  assert.ok(!validFrom(undefined), 'unset');
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ', 0 failed'}`);

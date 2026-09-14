@@ -93,9 +93,26 @@ const OUTLIER_THRESHOLD_M = 0.5;
 // ── Configuration (from environment variables) ──
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_TO = (process.env.EMAIL_TO || '').split(',').map(e => e.trim()).filter(Boolean);
-// Display name only matters locally: in CI the From line comes from the
-// EMAIL_FROM secret, so renaming the sender there is a separate step.
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Muskoka Tracker <onboarding@resend.dev>';
+
+// Resend accepts a From line only as "email@example.com" or
+// "Name <email@example.com>". On 2026-09-03 the EMAIL_FROM secret was set to
+// something else, Resend answered 422 on every send, and the email was gone
+// for eleven days while everything else in the run kept succeeding. A display
+// name is not worth losing the email over: an unusable secret falls back to the
+// default sender, and the fallback is reported where it will be seen.
+const DEFAULT_FROM = 'Muskoka Tracker <onboarding@resend.dev>';
+const ADDRESS = String.raw`[^\s<>@,]+@[^\s<>@,]+\.[^\s<>@,]+`;
+const FROM_RE = new RegExp(`^(?:${ADDRESS}|[^<>]*\\S[^<>]*<${ADDRESS}>)$`);
+export function validFrom(value) {
+  return FROM_RE.test((value ?? '').trim());
+}
+const EMAIL_FROM = validFrom(process.env.EMAIL_FROM) ? process.env.EMAIL_FROM.trim() : DEFAULT_FROM;
+if (process.env.EMAIL_FROM && !validFrom(process.env.EMAIL_FROM)) {
+  const note = `EMAIL_FROM secret is not a valid sender (${JSON.stringify(process.env.EMAIL_FROM)}); `
+    + `sending as ${DEFAULT_FROM} instead. Set it to "Name <email@example.com>".`;
+  console.log(`  ⚠ ${note}`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::warning title=EMAIL_FROM ignored::${note}`);
+}
 
 // ── Fetch helpers ──
 
@@ -2097,6 +2114,9 @@ async function main() {
     return;
   }
 
+  if (EMAIL_TO.length === 0) {
+    throw new Error('EMAIL_TO is empty — set the secret to one or more comma-separated addresses');
+  }
   const emailResp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
