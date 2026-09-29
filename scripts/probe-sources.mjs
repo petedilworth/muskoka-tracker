@@ -518,6 +518,103 @@ async function probeEnvironmentCanada() {
   }
 }
 
+
+// ── Copernicus / ESA Lakes_cci, and local ice-out records ──
+//
+// Two questions, both unanswerable from the sandbox because every host below
+// is blocked there. Is Lake Muskoka one of the ~2,000 lakes in the ESA Lakes
+// Climate Change Initiative product (lake-specific surface temperature and
+// ice cover, 1 km, 1990s to present)? Their published metadata CSV lists every
+// lake by name, so this greps it rather than guessing. And where do
+// human-kept ice-out dates for these lakes live? Three pages are known to
+// carry them; report what each actually contains, robots.txt first.
+
+const LAKES_CCI_META = 'https://climate.esa.int/documents/2607/lakescci_v2.1.0_metadata.csv';
+const OUR_LAKES = /muskoka|rosseau|joseph|lake of bays|simcoe|nipissing/i;
+
+// Strip markup and pull out anything that reads as "<year> … <Month day>" or
+// "<Month day> … <year>", the two ways a hand-kept ice-out table is written.
+function extractYearDates(html) {
+  const text = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+  const MONTH = '(January|February|March|April|May|June|November|December|Jan|Feb|Mar|Apr|Jun|Nov|Dec)\\.?';
+  const found = new Map();
+  for (const re of [
+    // Year first, as a table reads: only space or punctuation between the year
+    // and the month, which is what adjacent cells flatten to. Letters between
+    // them mean prose, and "2018 and on April 8" is exactly the pairing to
+    // refuse. The day may carry an ordinal ("April 1st"); without allowing it
+    // the word boundary fails on the "s".
+    new RegExp('\\b((?:18|19|20)\\d{2})\\b[^0-9A-Za-z]{0,12}' + MONTH + '\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b', 'gi'),
+    // Date first, as prose reads: "May 4, 2018". A comma or period must sit
+    // between day and year, so two flattened table cells ("April 17 2010")
+    // never pair one row's date with the next row's year.
+    new RegExp(MONTH + '\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s*[,.]\\s*((?:18|19|20)\\d{2})\\b', 'gi'),
+  ]) {
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const year = m[1].length === 4 ? m[1] : m[3];
+      const month = m[1].length === 4 ? m[2] : m[1];
+      const day = m[1].length === 4 ? m[3] : m[2];
+      if (!found.has(year)) found.set(year, `${month} ${day}`);
+    }
+  }
+  return [...found.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+async function probeIceAndCopernicus() {
+  head('ESA Lakes_cci / Copernicus — is Lake Muskoka one of the ~2,000 lakes?');
+  const r = await get(LAKES_CCI_META, { timeout: 60000 });
+  if (!r.ok) {
+    console.log(`  metadata csv: ${bad(`HTTP ${r.status || r.error}`)}`);
+  } else {
+    const lines = r.text.split(/\r?\n/).filter(Boolean);
+    const header = lines[0];
+    console.log(`  metadata csv: ${ok(`HTTP ${r.status}`)}, ${lines.length - 1} lakes`);
+    console.log(dim(`    columns: ${header.slice(0, 200)}`));
+    const canada = lines.filter(l => /canada/i.test(l)).length;
+    console.log(`    rows mentioning Canada: ${canada}`);
+    const hits = lines.slice(1).filter(l => OUR_LAKES.test(l));
+    console.log(hits.length
+      ? `    ${ok(`${hits.length} matching rows:`)}\n${hits.map(h => '      ' + h.slice(0, 220)).join('\n')}`
+      : `    ${bad('no row matches Muskoka, Rosseau, Joseph, Lake of Bays, Simcoe or Nipissing')} — the lake is not in the product`);
+    // Size context: what is the smallest lake they include? Area column, if any.
+    const cols = header.split(',').map(c => c.trim().toLowerCase());
+    const areaIdx = cols.findIndex(c => /area/.test(c));
+    if (areaIdx >= 0) {
+      const areas = lines.slice(1).map(l => parseFloat(l.split(',')[areaIdx])).filter(Number.isFinite).sort((a, b) => a - b);
+      if (areas.length) console.log(`    area column "${cols[areaIdx]}": smallest ${areas[0]}, median ${areas[areas.length >> 1]} (Lake Muskoka is about 120 km²)`);
+    }
+  }
+  await pause(500);
+
+  head('Ice-out records kept by people — what each page actually holds');
+  const pages = [
+    ['http://jarvisgroupmuskoka.ca', '/reports/a-century-of-ice-out-dates-in-muskoka/', 'Jarvis Group — "A Century of Ice-Out Dates in Muskoka" (Lake Muskoka)'],
+    ['https://echolakeassociation.ca', '/ice-in-ice-out-data', 'Echo Lake Association — ice in / ice out since 2009'],
+    ['https://skeletonlake.ca', '/When-the-ice-went-out', 'Skeleton Lake Cottagers — the day the ice went out'],
+  ];
+  for (const [origin, path, label] of pages) {
+    console.log(`  ${label}`);
+    await robots(origin, path);
+    const pg = await get(origin + path, { timeout: 30000 });
+    console.log(`  ${path}: ${pg.ok ? ok(`HTTP ${pg.status}`) : bad(`HTTP ${pg.status || pg.error}`)}`);
+    if (!pg.ok) { await pause(500); continue; }
+    const tables = (pg.text.match(/<table\b/gi) || []).length;
+    const rows = (pg.text.match(/<tr\b/gi) || []).length;
+    const pairs = extractYearDates(pg.text);
+    console.log(`    ${tables} tables, ${rows} rows; ${pairs.length} year→date pairs found`);
+    if (pairs.length) {
+      console.log(`    span ${pairs[0][0]} … ${pairs[pairs.length - 1][0]}`);
+      console.log('    ' + pairs.map(([y, d]) => `${y}: ${d}`).join(' | '));
+    }
+    // "ice in" as well as "ice out"? Say which words the page uses.
+    const words = ['ice in', 'ice-in', 'ice out', 'ice-out', 'freeze', 'break-up', 'breakup'].filter(w => new RegExp(w, 'i').test(pg.text));
+    console.log(dim(`    terms on page: ${words.join(', ') || 'none of the usual ones'}`));
+    await pause(700);
+  }
+}
+
 // A sandbox egress proxy also answers 403, which looks identical to a service
 // refusing us. Check a host that is certainly reachable and certainly public
 // first, so a blocked environment is reported as such instead of being
@@ -539,6 +636,7 @@ async function main() {
   }
 
   await probeEnvironmentCanada();
+  await probeIceAndCopernicus();
   await probeOpg();
   await probeDataStream();
   console.log(`\n${'─'.repeat(70)}`);
