@@ -123,6 +123,16 @@ repo again would not break it. Pages carry a `noindex` meta tag and
 
 ---
 
+### The gauge map
+
+The levels, flow and about pages carry a map of the gauges, drawn with a
+vendored copy of Leaflet over OpenStreetMap tiles. Coordinates come from
+Environment Canada's `hydrometric-stations` collection, fetched once per gauge
+by the notifier and cached in `data/history/stations.json`. Until that file
+exists the map section is simply omitted, so the site builds cleanly either way.
+`npm run smoke` writes stand-in positions to that file; delete it before
+committing, since they are not the real locations.
+
 ## Running it locally
 
 ```bash

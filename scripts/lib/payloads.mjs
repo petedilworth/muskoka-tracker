@@ -7,7 +7,7 @@
 import fs from 'node:fs/promises';
 import {
   median, poolAroundDay, toRecord, addDays, daysBetween, readingNDaysBack,
-  computeTodayTempStats, computeNextWeekTempForecast, loadAllArchives, loadAnnualPeaks,
+  computeTodayTempStats, computeNextWeekTempForecast, loadAllArchives, loadAnnualPeaks, loadStations,
   STATION, EXTRA_STATIONS, FLOW_STATIONS, CM_PER_INCH,
   TEMP_CSV_PATH,
 } from '../../notify.mjs';
@@ -139,6 +139,36 @@ export function climatology(records, currentYear) {
   return dayOfYearEnvelope(records, currentYear, { pick: r => r.tempC, round: r1 });
 }
 
+// Days at or above the swim line so far this year, against what other years
+// had reached by the same day. The records page already calls 20 °C the line
+// for "swimmable", so this uses the same number rather than inventing another.
+// Only years with a reading on at least 80% of the days up to the cutoff are
+// eligible for the typical figure: a year with a hole where June should be
+// would otherwise drag the median down.
+export const SWIM_C = 20;
+export function swimDays(records, currentYear, uptoDayOfYear, threshold = SWIM_C) {
+  const byYear = new Map();
+  for (const r of records) {
+    if (r.dayOfYear > uptoDayOfYear) continue;
+    if (!byYear.has(r.year)) byYear.set(r.year, { days: 0, warm: 0 });
+    const y = byYear.get(r.year);
+    y.days++;
+    if (r.tempC >= threshold) y.warm++;
+  }
+  const thisYear = byYear.get(currentYear)?.warm ?? 0;
+  const others = [...byYear.entries()]
+    .filter(([y, v]) => y !== currentYear && v.days >= uptoDayOfYear * 0.8)
+    .map(([y, v]) => [y, v.warm]);
+  const counts = others.map(([, c]) => c).sort((a, b) => a - b);
+  const best = others.reduce((m, r) => (m === null || r[1] > m[1] ? r : m), null);
+  return {
+    threshold, uptoDayOfYear, thisYear,
+    typical: counts.length ? Math.round(median(counts)) : null,
+    years: counts.length,
+    best: best && { year: best[0], days: best[1] },
+  };
+}
+
 export function buildTemperaturePayload(records, currentYear, todayIso) {
   const byYear = new Map();
   for (const r of records) {
@@ -200,6 +230,7 @@ export function buildTemperaturePayload(records, currentYear, todayIso) {
       expectedChange: r1(forecast.expectedChange), direction: forecast.direction,
       yearsUsed: forecast.yearsUsed, futureDate: forecast.futureDate,
     },
+    swim: swimDays(records, currentYear, latest.dayOfYear),
     dist: (() => { const d = distribution(pool); return { ...Object.fromEntries(Object.entries(d).map(([k, v]) => [k, k === 'n' ? v : r1(v)])) }; })(),
     yearMeans,
   };
@@ -256,6 +287,7 @@ export function recentCoverageGaps(days, todayIso, withinDays = 730, minGapDays 
 // ── annual instantaneous peaks ──
 
 export async function loadPeaks() { return loadAnnualPeaks(); }
+export async function loadGaugeLocations() { return loadStations(); }
 
 // Classify by matching loosely rather than against exact strings, because the
 // values inside DATA_TYPE_EN have not been observed — only the field name has.
@@ -656,17 +688,25 @@ export function buildOverviewPayload(temp, levels, flow, todayIso) {
       percentile: bala.percentile, dist: bala.dist,
       trailing: bala.trailing, changes: bala.changes,
       ageDays: daysBetween(todayIso, bala.latest.date),
-      series: windowByDate(bala.series, 90),
+      // The home page draws this year against the gauge's whole-record
+      // envelope, so it needs the two-year daily series and the normal block,
+      // not a 90-day slice. Same shape as the station payload so the browser
+      // uses the same renderer.
+      latest: bala.latest,
+      series: bala.series,
+      normal: bala.normal,
     },
     temp: {
       date: temp.latest.date, value: temp.latest.value, unit: '°C',
       tempF: Math.round(temp.latest.value * 9 / 5 + 32),
       stats: temp.stats, forecast: temp.forecast, dist: temp.dist,
+      swim: temp.swim,
       ageDays: temp.meta.lagDays, years: temp.meta.years,
     },
     flow: flow.stations.map(s => ({
       id: s.id, name: s.name, label: s.label,
       date: s.latest.date, value: s.latest.value, percentile: s.percentile,
+      vsJulyPct: s.vsJulyPct,
     })),
   };
 }

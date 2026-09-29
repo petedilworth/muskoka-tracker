@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "chart.js": "^4.4.0",
-    "chartjs-node-canvas": "^5.0.0"
+    "chartjs-node-canvas": "^5.0.0",
+    "leaflet": "^1.9.4"
   }
 }

@@ -14,7 +14,7 @@ import {
 import {
   loadTemps, loadLevelCache, buildTemperaturePayload, buildAllYearsPayload,
   buildLevelsPayload, buildFlowPayload, buildOverviewPayload, buildRecordsPayload,
-  loadPeaks,
+  loadPeaks, loadGaugeLocations,
 } from './lib/payloads.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -36,7 +36,7 @@ const NAV = [
   ['about.html', 'About'],
 ];
 
-function page({ file, title, heading, sub, body, script }) {
+function page({ file, title, heading, sub, body, script, map }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,7 +47,7 @@ function page({ file, title, heading, sub, body, script }) {
 <title>${esc(title)}</title>
 <!-- Inline so the browser never fires a request for /favicon.ico -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8C%8A%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/site.css">${map ? '<link rel="stylesheet" href="assets/leaflet/leaflet.css">' : ''}
 </head>
 <body>
 <header class="site">
@@ -73,6 +73,7 @@ ${body}
   </footer>
 </main>
 <script src="assets/chart.umd.js"></script>
+${map ? '<script src="assets/leaflet/leaflet.js"></script>' : ''}
 <script src="assets/app.js"></script>
 <script>
 ${script}
@@ -162,75 +163,176 @@ function staleNotice(ageDays, what, threshold) {
   return `<div class="notice">The most recent ${what} reading is ${ageDays} days old. Everything below describes that reading, not today.</div>`;
 }
 
+
+// ── the map ──
+// Only rendered when notify.mjs has cached coordinates for at least one of the
+// gauges on the page. Until the first run after this shipped, that file does
+// not exist and the section is simply absent.
+function gaugeRows(locations, stations, measure, href) {
+  const byId = new Map(locations.map(l => [l.id, l]));
+  return stations.map(st => {
+    const loc = byId.get(st.id);
+    if (!loc) return null;
+    const reading = st.latest
+      ? `${st.latest.value.toFixed(st.decimals)} ${st.unit} · ${escDate(st.latest.date)}`
+      : null;
+    return { id: st.id, name: st.name, label: st.label, measure, lat: loc.lat, lon: loc.lon,
+      reading, href: href ? `${href}#card-${st.id}` : null };
+  }).filter(Boolean);
+}
+
+function mapCard(rows, { title, sub, id }) {
+  if (!rows.length) return '';
+  return `<div class="chart-card map-card">
+    <div class="chart-head"><div><div class="chart-title">${esc(title)}</div>${sub ? `<div class="chart-sub">${sub}</div>` : ''}</div></div>
+    <div class="map-box" id="${id}"></div>
+    <div class="legend">${sw('#2D6A9F', 'dot')}Level gauge ${sw('#5BA88A', 'dot')}Flow gauge &middot; map tiles © OpenStreetMap contributors</div>
+  </div>`;
+}
+
+const mapScript = (id, rows) => rows.length
+  ? `Muskoka.gaugeMap(document.getElementById('${id}'), ${JSON.stringify(rows)});`
+  : '';
+
 // ── pages ──
+
+// The home page in one paragraph a person would actually say. Every clause is
+// gated on the number that earns it; nothing here is adjectival guesswork.
+function seasonPhrase(iso) {
+  const M = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const m = M[parseInt(iso.substring(5, 7), 10) - 1];
+  const d = parseInt(iso.substring(8, 10), 10);
+  return (d <= 10 ? 'early ' : d <= 20 ? 'mid-' : 'late ') + m;
+}
+function rangePhrase(p) {
+  if (p === null || p === undefined) return '';
+  if (p <= 10) return 'among the lowest readings on record';
+  if (p <= 33) return 'in the lowest third of readings on record';
+  if (p < 67) return 'in the middle of its recorded range';
+  if (p < 90) return 'in the highest third of readings on record';
+  return 'among the highest readings on record';
+}
+const inches = (m) => Math.abs(m * 100 / 2.54);
+const inWord = (v) => `${v.toFixed(1)} inch${v.toFixed(1) === '1.0' ? '' : 'es'}`;
+
+function headline(o) {
+  const lvl = o.level, t = o.temp, f = o.flow[0];
+  const parts = [];
+  if (lvl) {
+    const bits = [];
+    if (lvl.vsJulyIn !== null && lvl.vsJulyIn !== undefined) {
+      bits.push(Math.abs(lvl.vsJulyIn) < 0.05
+        ? 'right at its July average'
+        : `<strong>${inWord(Math.abs(lvl.vsJulyIn))} ${lvl.vsJulyIn < 0 ? 'below' : 'above'}</strong> its July average`);
+    }
+    if (lvl.normal && lvl.normal.vsNormalIn !== null && lvl.normal.vsNormalIn !== undefined) {
+      const n = lvl.normal.vsNormalIn;
+      bits.push(Math.abs(n) < 0.05
+        ? `exactly normal for ${seasonPhrase(lvl.date)}`
+        : `${inWord(Math.abs(n))} ${n < 0 ? 'below' : 'above'} normal for ${seasonPhrase(lvl.date)}`);
+    }
+    const range = rangePhrase(lvl.percentile);
+    parts.push(`Lake Muskoka at Bala is ${bits.join(' and ')}${range ? ', ' + range : ''}.`);
+    const c30 = lvl.changes && lvl.changes.d30;
+    if (c30 && Math.abs(c30.change) >= 0.0127) {
+      parts.push(`It has ${c30.change < 0 ? 'fallen' : 'risen'} ${inWord(inches(c30.change))} over the past month.`);
+    } else if (c30) {
+      parts.push('It has barely moved over the past month.');
+    }
+  }
+  if (t && t.value !== null) {
+    const s = t.stats;
+    const rel = !s ? '' : s.percentile <= 25 ? ', cooler than usual for this time of year'
+      : s.percentile >= 75 ? ', warmer than usual for this time of year' : ', about typical for this time of year';
+    let fc = '';
+    if (t.forecast) {
+      fc = t.forecast.direction === 'hold steady'
+        ? ' and has typically held steady over the following week'
+        : ` and has typically ${t.forecast.direction}ed another ${Math.abs(t.forecast.expectedChange).toFixed(1)} °C by this time next week`;
+    }
+    parts.push(`The water is <strong>${t.value.toFixed(1)} °C</strong>${rel}${fc}.`);
+  }
+  if (f && f.vsJulyPct !== null && f.vsJulyPct !== undefined) {
+    const how = f.vsJulyPct < 50 ? 'low' : f.vsJulyPct > 150 ? 'high' : 'near their summer normal';
+    parts.push(`Rivers are running ${how}: ${esc(f.name)} is at ${f.vsJulyPct}% of its July flow.`);
+  }
+  return parts.join(' ');
+}
 
 function indexPage(o, temp) {
   const lvl = o.level;
   const t = o.temp;
+  const year = parseInt(o.meta.generated.substring(0, 4), 10);
+  const swim = t.swim;
 
-  const levelCard = lvl ? card(`
-      <h2>Water level · ${esc(lvl.name)}</h2>
-      <div class="big num">${lvl.vsJulyIn === null ? '—' : (lvl.vsJulyIn > 0 ? '+' : '') + lvl.vsJulyIn.toFixed(1)}<span class="unit">in vs July avg</span></div>
-      <div class="asof">${lvl.value.toFixed(3)} m &middot; ${escDate(lvl.date)}</div>
-      <p class="lede">${pctLine(lvl.percentile, `of ${lvl.dist.n.toLocaleString('en-CA')} readings on record`)}</p>
-      ${kvTable([
-        ['Latest', lvl.value.toFixed(3)],
-        ['7-day mean', lvl.trailing.d7 === null ? '—' : lvl.trailing.d7.toFixed(3)],
-        ['30-day mean', lvl.trailing.d30 === null ? '—' : lvl.trailing.d30.toFixed(3)],
-      ], ['', 'metres'])}
-      <div class="dist" id="dist-overview-level"></div>
-    `, 'levels.html') : '';
+  const tile = (label, big, unit, asof, foot, distId, href) => card(`
+      <h2>${label}</h2>
+      <div class="big num">${big}<span class="unit">${unit}</span></div>
+      <div class="asof">${asof}</div>
+      ${foot ? `<p class="lede">${foot}</p>` : ''}
+      ${distId ? `<div class="dist" id="${distId}"></div>` : ''}`, href);
 
-  const tempCard = card(`
-      <h2>Water temperature</h2>
-      <div class="big num">${t.value.toFixed(1)}<span class="unit">°C</span><span class="alt">${t.tempF}°F</span></div>
-      <div class="asof">${escDate(t.date)}${t.ageDays > 0 ? ` &middot; satellite lags ${t.ageDays} day${t.ageDays === 1 ? '' : 's'}` : ''}</div>
-      <p class="lede">${t.stats ? `${pctLine(t.stats.percentile, `for this time of year across ${t.years} years`)} &middot; ${ordinal(t.stats.rank)} warmest of ${t.stats.totalYears}` : ''}</p>
-      ${t.stats ? kvTable([
-        ['Today', t.value.toFixed(1)],
-        ['Typical (median)', t.stats.median.toFixed(1)],
-        ['Range on record', `${t.stats.min.toFixed(1)}–${t.stats.max.toFixed(1)}`],
-      ], ['', '°C']) : ''}
-      <div class="dist" id="dist-overview-temp"></div>
-    `, 'temperature.html');
+  const tiles = [
+    lvl && tile('Water level · Bala',
+      (lvl.vsJulyIn === null ? '—' : (lvl.vsJulyIn > 0 ? '+' : '') + lvl.vsJulyIn.toFixed(1)), ' in vs July avg',
+      `${lvl.value.toFixed(3)} m &middot; ${escDate(lvl.date)}`,
+      pctLine(lvl.percentile, 'of readings on record'),
+      'dist-overview-level', 'levels.html'),
+    tile('Water temperature', t.value.toFixed(1), '°C',
+      `${t.tempF}°F &middot; ${escDate(t.date)}${t.ageDays > 0 ? ` &middot; satellite lags ${t.ageDays} day${t.ageDays === 1 ? '' : 's'}` : ''}`,
+      t.stats ? `${ordinal(t.stats.rank)} warmest of ${t.stats.totalYears} years for this week` : '',
+      'dist-overview-temp', 'temperature.html'),
+    swim && tile('Swim days this year', String(swim.thisYear), ` days ≥ ${swim.threshold} °C`,
+      swim.typical === null ? `through ${escDate(t.date)}`
+        : `typical by ${escDate(t.date).replace(/, \d{4}$/, '')}: ${swim.typical}${swim.best ? ` &middot; most: ${swim.best.days} in ${swim.best.year}` : ''}`,
+      swim.typical === null ? '' : (swim.thisYear > swim.typical
+        ? `${swim.thisYear - swim.typical} more than a typical year by now`
+        : swim.thisYear < swim.typical ? `${swim.typical - swim.thisYear} fewer than a typical year by now` : 'exactly a typical year so far'),
+      null, 'temperature.html'),
+    o.flow.length && tile('River flow', o.flow[0].value.toFixed(1), ' m³/s',
+      `${esc(o.flow[0].name)} &middot; ${escDate(o.flow[0].date)}`,
+      o.flow[0].vsJulyPct !== null && o.flow[0].vsJulyPct !== undefined
+        ? `${o.flow[0].vsJulyPct}% of its July average &middot; ${pctLine(o.flow[0].percentile, 'on record')}`
+        : pctLine(o.flow[0].percentile, 'of readings on record'),
+      null, 'flow.html'),
+  ].filter(Boolean).join('');
 
-  const flowCard = o.flow.length ? card(`
-      <h2>River flow</h2>
-      <div class="big num">${o.flow[0].value.toFixed(1)}<span class="unit">m³/s</span></div>
-      <div class="asof">${esc(o.flow[0].name)} &middot; ${escDate(o.flow[0].date)}</div>
-      <p class="lede">${pctLine(o.flow[0].percentile, 'of readings on record')}</p>
-      ${kvTable(o.flow.slice(0, 4).map(s => [esc(s.name), s.value.toFixed(1)]), ['Gauge', 'm³/s'])}
-    `, 'flow.html') : '';
-
-  const outlook = t.forecast
-    ? `<p class="lede" style="margin-top:14px;">Over the next seven days the water has historically ${
-        t.forecast.direction === 'hold steady' ? 'held steady'
-          : t.forecast.direction + 'ed by about ' + Math.abs(t.forecast.expectedChange).toFixed(1) + ' °C'
-      } from this point in the season, across ${t.forecast.yearsUsed} years.</p>` : '';
+  const hero = lvl && lvl.normal && lvl.normal.envelope ? `
+  <div class="section hero">
+    <h2>Bala water level &middot; ${year} against ${lvl.normal.years} years</h2>
+    ${chartCard({
+      title: 'Lake Muskoka at Bala, this year against every other year',
+      sub: 'Shaded bands are the full range and the middle half of all previous years for each date',
+      id: 'ch-hero',
+      toggles: [['season', 'This season', true], ['year', 'Full year', false]],
+      legend: `${sw('#2D6A9F')}${year} ${sw('#C0392B')}${year - 1} ${sw('rgba(107,142,173,0.28)', 'band')}Middle half ${sw('rgba(107,142,173,0.16)', 'band')}Full range ${sw('#E07B4C', 'dot')}Latest`,
+    })}
+  </div>` : '';
 
   const body = `
   ${staleNotice(lvl ? lvl.ageDays : null, 'gauge', 2)}
-  <div class="cards">${levelCard}${tempCard}${flowCard}</div>
-  ${outlook}
-  <div class="section">
-    <h2>Bala water level &middot; last 90 days</h2>
-    ${chartCard({
-      title: 'Bala — Lake Muskoka',
-      sub: 'Daily level against the five-year July average',
-      id: 'ch-level',
-      legend: `${sw('#2D6A9F')}Daily level ${sw('#E07B4C', 'dot')}Latest ${sw('#5BA88A')}July average`,
-    })}
-  </div>`;
+  <p class="headline">${headline(o)}</p>
+  ${hero}
+  <div class="cards tiles">${tiles}</div>`;
 
   const script = `
 Muskoka.getJSON('data/overview.json').then(function (o) {
-  if (!o.level) return;
-  var st = { name: o.level.name, unit: 'm', format: 'f3', decimals: 3, series: o.level.series };
-  Muskoka.charts.datedSeries(document.getElementById('ch-level'), st, 90, ${lvl && lvl.julyAvg !== null && lvl.julyAvg !== undefined ? lvl.julyAvg : 'null'});
-  Muskoka.renderDist(document.getElementById('dist-overview-level'), o.level.dist, o.level.value, 'f3', 'm');
-  if (o.temp && o.temp.dist) {
-    Muskoka.renderDist(document.getElementById('dist-overview-temp'), o.temp.dist, o.temp.value, 'f1', '°C');
+  if (o.level && o.level.normal && o.level.normal.envelope) {
+    var hero = null;
+    var doy = o.level.latest ? Muskoka.dayOfYearOf(o.level.latest.date) : 200;
+    function drawHero(mode) {
+      if (hero) hero.destroy();
+      var win = mode === 'year' ? { xMin: 1, xMax: 366 }
+        : { xMin: Math.max(1, doy - 120), xMax: Math.min(366, doy + 20) };
+      hero = Muskoka.charts.seasonal(document.getElementById('ch-hero'),
+        Muskoka.charts.seasonalFromStation(o.level, ${year}),
+        { xMin: win.xMin, xMax: win.xMax, unit: 'm', format: 'f3', floor: 0.01 });
+    }
+    drawHero('season');
+    Muskoka.toggleGroup(document.getElementById('ch-hero-toggles'), drawHero);
   }
+  if (o.level) Muskoka.renderDist(document.getElementById('dist-overview-level'), o.level.dist, o.level.value, 'f3', 'm');
+  if (o.temp && o.temp.dist) Muskoka.renderDist(document.getElementById('dist-overview-temp'), o.temp.dist, o.temp.value, 'f1', '°C');
 });`;
 
   return page({
@@ -311,11 +413,16 @@ middle half = 25th percentile(pool) … 75th percentile(pool)</code>
 
   <div class="section">
     <h2>Yearly averages</h2>
-    ${kvTable(
+    ${chartCard({
+      title: 'Mean water temperature by year',
+      sub: 'Every reading in the year averaged. Hollow bars are partial years — the first and the current — and are not comparable.',
+      id: 'ch-years', short: true,
+      legend: `${sw('#2D6A9F', 'band')}Full year ${sw('transparent', 'band hollow')}Partial year`,
+    })}
+    ${explain('The numbers behind the bars', kvTable(
       t.yearMeans.slice().reverse().map(([y, mean, n]) =>
         [String(y), mean.toFixed(1), String(n)]),
-      ['Year', 'Mean °C', 'Days'])}
-    <p class="lede">Mean of every reading in the year. Partial years (the first and the current) average fewer days and are not comparable to full ones.</p>
+      ['Year', 'Mean °C', 'Days']) + '<p>Mean of every reading in the year. The first year and the current one cover fewer days and are not comparable to full ones.</p>')}
   </div>`;
 
   const script = `
@@ -344,6 +451,7 @@ Muskoka.getJSON('data/temperature.json').then(function (d) {
   T = d;
   draw('season');
   Muskoka.charts.tempAnomaly(document.getElementById('ch-anom'), T);
+  Muskoka.charts.yearBars(document.getElementById('ch-years'), T.yearMeans, T.current.year, { unit: '°C', format: 'f1', label: 'Mean' });
   Muskoka.renderDist(document.getElementById('dist-temp'), T.dist, T.latest.value, 'f1', '°C');
 });
 Muskoka.toggleGroup(document.getElementById('ch-clim-toggles'), draw);`;
@@ -356,7 +464,7 @@ Muskoka.toggleGroup(document.getElementById('ch-clim-toggles'), draw);`;
   });
 }
 
-function stationPage({ file, title, heading, sub, payload, comparison, note, measure }) {
+function stationPage({ file, title, heading, sub, payload, comparison, note, measure, locations }) {
   const withNormal = payload.stations.find(st => st.normal);
   const normalNote = withNormal ? explain('What "normal for the date" means', `
       <p>Two comparisons sit on each card and they answer different questions. <strong>Vs July average</strong> compares against the mean of every July day in the last five years: a fixed summer benchmark, useful for "is the lake up or down for the season". <strong>Vs normal for the date</strong> compares against what this gauge has actually done on this calendar date across its whole record.</p>
@@ -368,7 +476,7 @@ function stationPage({ file, title, heading, sub, payload, comparison, note, mea
     ? `\n  <div class="section">${MANAGED_EXPLAINER}${normalNote}</div>`
     : (normalNote ? `\n  <div class="section">${normalNote}</div>` : '');
   const cards = payload.stations.map(st => card(`
-      <h2>${esc(st.name)} &middot; ${esc(st.label)}</h2>
+      <h2 id="card-${st.id}">${esc(st.name)} &middot; ${esc(st.label)}</h2>
       <div class="big num">${st.latest.value.toFixed(st.decimals)}<span class="unit">${esc(st.unit)}</span></div>
       <div class="asof">${escDate(st.latest.date)}${vsJuly(st)}</div>
       <p class="lede">${pctLine(st.percentile, `of all ${st.n.toLocaleString('en-CA')} readings on record (${st.firstDate.substring(0, 4)}–${st.lastDate.substring(0, 4)})`)}</p>
@@ -387,11 +495,13 @@ function stationPage({ file, title, heading, sub, payload, comparison, note, mea
     title: `${st.name} — ${st.label}`,
     sub: `${st.n.toLocaleString('en-CA')} readings, ${escDate(st.firstDate)} to ${escDate(st.lastDate)}`,
     id: `ch-${st.id}`,
-    toggles: [['90', '90 days', true], ['365', '1 year', false], ['730', '2 years', false], ['9999', `All ${st.years}y`, false]],
+    toggles: [['90', '90 days', true], ['365', '1 year', false], ['730', '2 years', false],
+      ...(st.normal && st.normal.envelope ? [['season', 'Season', false]] : []),
+      ['9999', `All ${st.years}y`, false]],
     legend: `${sw('#2D6A9F')}Daily ${sw('#E07B4C', 'dot')}Latest`
       + `${st.julyAvg !== null ? ` ${sw('#5BA88A')}July avg (${st.julyAvgYears}-yr)` : ''}`
       + `${st.normal ? ` ${sw('#6B6B6B')}Normal for the date ${sw('rgba(107,142,173,0.28)', 'band')}Middle half ${sw('rgba(107,142,173,0.16)', 'band')}Full range` : ''}`
-      + ` &middot; the "All" view switches to monthly means with each month's range shaded`,
+      + ` &middot; "Season" overlays this year and last on the same calendar; "All" switches to monthly means`,
   })).join('\n    ');
 
   const cmp = (comparison && payload.comparison && payload.comparison.series.length) ? `
@@ -423,7 +533,15 @@ Muskoka.getJSON('data/${file.replace('.html', '')}.json').then(function (d) {
     var chart = null;
     function draw(days) {
       if (chart) chart.destroy();
-      chart = Muskoka.charts.datedSeries(document.getElementById('ch-' + st.id), st, parseInt(days, 10), st.julyAvg);
+      var el = document.getElementById('ch-' + st.id);
+      if (days === 'season') {
+        var doy = Muskoka.dayOfYearOf(st.latest.date);
+        chart = Muskoka.charts.seasonal(el, Muskoka.charts.seasonalFromStation(st, ${CURRENT_YEAR}),
+          { xMin: Math.max(1, doy - 120), xMax: Math.min(366, doy + 20), unit: st.unit, format: st.format,
+            floor: st.decimals === 3 ? 0.01 : 0.5 });
+        return;
+      }
+      chart = Muskoka.charts.datedSeries(el, st, parseInt(days, 10), st.julyAvg);
     }
     draw(90);
     Muskoka.toggleGroup(document.getElementById('ch-' + st.id + '-toggles'), draw);
@@ -441,10 +559,18 @@ Muskoka.getJSON('data/${file.replace('.html', '')}.json').then(function (d) {
   }` : ''}
 });`;
 
+  const mapRows = gaugeRows(locations || [], payload.stations, measure, null);
+  const map = mapCard(mapRows, {
+    title: measure === 'flow' ? 'Where the flow gauges are' : 'Where the level gauges are',
+    sub: 'Hover a marker for its latest reading; click to jump to that gauge',
+    id: 'map-' + measure,
+  });
+
   return page({
     file, title, heading, sub,
-    body: `${note}<div class="cards">${cards}</div>\n  <div class="section">${charts}</div>${managedNote}${cmp}`,
-    script,
+    body: `${note}${map}<div class="cards">${cards}</div>\n  <div class="section">${charts}</div>${managedNote}${cmp}`,
+    script: script + '\n' + mapScript('map-' + measure, mapRows.map(r => ({ ...r, href: '#card-' + r.id }))),
+    map: mapRows.length > 0,
   });
 }
 
@@ -615,7 +741,7 @@ function recordsPage(r) {
   });
 }
 
-function aboutPage(temp, levels, flow) {
+function aboutPage(temp, levels, flow, locations) {
   const omitted = flow.omitted.length
     ? `<p>${flow.omitted.map(o => `Gauge ${esc(o.id)} (${esc(o.name)}) is not shown: its most recent reading is from ${escDate(o.lastDate)}.`).join(' ')}</p>`
     : '';
@@ -639,6 +765,15 @@ function aboutPage(temp, levels, flow) {
     ${omitted}
   </div>
 
+  ${(() => {
+    const rows = [
+      ...gaugeRows(locations || [], levels.stations, 'level', 'levels.html'),
+      ...gaugeRows(locations || [], flow.stations, 'flow', 'flow.html'),
+    ];
+    return rows.length ? `<div style="margin-top:14px;">${mapCard(rows, {
+      title: 'The gauges', sub: 'Every station this site reads. Click a marker to open its page.', id: 'map-about' })}</div>` : '';
+  })()}
+
   <div class="card" style="margin-top:14px;">
     <h2>Coverage</h2>
     ${kvTable([
@@ -648,10 +783,14 @@ function aboutPage(temp, levels, flow) {
     ], ['Series', 'Range', 'Readings'])}
   </div>`;
 
+  const rows = [
+    ...gaugeRows(locations || [], levels.stations, 'level', 'levels.html'),
+    ...gaugeRows(locations || [], flow.stations, 'flow', 'flow.html'),
+  ];
   return page({
     file: 'about.html', title: 'Muskoka Tracker — about the data',
     heading: 'About the data', sub: 'Sources, update cadence, and what the numbers mean.',
-    body, script: '',
+    body, script: mapScript('map-about', rows), map: rows.length > 0,
   });
 }
 
@@ -670,7 +809,7 @@ async function writeJSON(name, obj) {
 async function main() {
   console.log('Building site from data/ (no network)...');
 
-  const [temps, cache, peakRows] = await Promise.all([loadTemps(), loadLevelCache(), loadPeaks()]);
+  const [temps, cache, peakRows, locations] = await Promise.all([loadTemps(), loadLevelCache(), loadPeaks(), loadGaugeLocations()]);
   const temp = buildTemperaturePayload(temps, CURRENT_YEAR, TODAY_ISO);
   const allYears = buildAllYearsPayload(temps, CURRENT_YEAR);
   const levels = buildLevelsPayload(cache, TODAY_ISO);
@@ -681,6 +820,9 @@ async function main() {
   console.log(`  ${temps.length} temperature readings, ${temp.meta.years} years`);
   console.log(`  ${levels.stations.length} level gauges, ${flow.stations.length} flow gauges` +
     (flow.omitted.length ? ` (${flow.omitted.length} omitted as stale)` : ''));
+  console.log(locations.length
+    ? `  ${locations.length} gauge locations cached — map enabled`
+    : '  no gauge locations cached yet — map omitted until the next notifier run');
 
   await fs.mkdir(DOCS + 'data', { recursive: true });
   await fs.mkdir(DOCS + 'assets', { recursive: true });
@@ -698,18 +840,18 @@ async function main() {
     'levels.html': stationPage({
       file: 'levels.html', title: 'Muskoka Tracker — water levels',
       heading: 'Water levels', sub: 'Five gauges around Lake Muskoka and Lake Rosseau.',
-      payload: levels, comparison: true, measure: 'level',
+      payload: levels, comparison: true, measure: 'level', locations,
       note: staleNotice(overview.level ? overview.level.ageDays : null, 'gauge', 2),
     }),
     'flow.html': stationPage({
       file: 'flow.html', title: 'Muskoka Tracker — river flow',
       heading: 'River flow', sub: 'Discharge on the Muskoka and Indian rivers.',
-      payload: flow, comparison: true, measure: 'flow',
+      payload: flow, comparison: true, measure: 'flow', locations,
       note: flow.omitted.length ? `<div class="notice">${flow.omitted.map(g =>
         `Gauge ${esc(g.id)} (${esc(g.name)}) is not shown: it stopped reporting after ${escDate(g.lastDate)}.`).join(' ')}</div>` : '',
     }),
     'records.html': recordsPage(records),
-    'about.html': aboutPage(temp, levels, flow),
+    'about.html': aboutPage(temp, levels, flow, locations),
   };
 
   for (const [name, html] of Object.entries(pages)) {
@@ -723,6 +865,13 @@ async function main() {
   await fs.copyFile(here + 'lib/site.css', DOCS + 'assets/site.css');
   await fs.copyFile(here + 'lib/app.js', DOCS + 'assets/app.js');
   await fs.copyFile(ROOT + 'node_modules/chart.js/dist/chart.umd.js', DOCS + 'assets/chart.umd.js');
+  // Leaflet, for the gauge map. Same reasoning as Chart.js above.
+  await fs.mkdir(DOCS + 'assets/leaflet/images', { recursive: true });
+  await fs.copyFile(ROOT + 'node_modules/leaflet/dist/leaflet.js', DOCS + 'assets/leaflet/leaflet.js');
+  await fs.copyFile(ROOT + 'node_modules/leaflet/dist/leaflet.css', DOCS + 'assets/leaflet/leaflet.css');
+  for (const img of await fs.readdir(ROOT + 'node_modules/leaflet/dist/images')) {
+    await fs.copyFile(ROOT + 'node_modules/leaflet/dist/images/' + img, DOCS + 'assets/leaflet/images/' + img);
+  }
 
   await fs.writeFile(DOCS + 'robots.txt', 'User-agent: *\nDisallow: /\n', 'utf8');
   await fs.writeFile(DOCS + '404.html', page({

@@ -31,7 +31,7 @@
   <h2 style="margin:0 0 2px;font-size:22px;">River flow</h2>
   <p style="margin:0 0 18px;color:var(--muted);font-size:13px;">Discharge on the Muskoka and Indian rivers.</p>
 <div class="notice">Gauge 02EB006 (Bala) is not shown: it stopped reporting after Dec 31, 2021.</div><div class="cards"><div class="card">
-      <h2>Bracebridge &middot; Muskoka River</h2>
+      <h2 id="card-02EB013">Bracebridge &middot; Muskoka River</h2>
       <div class="big num">1.9<span class="unit">m³/s</span></div>
       <div class="asof">Sep 28, 2026 &middot; 25% of the July average</div>
       <p class="lede">6th percentile of all 18,935 readings on record (1973–2026)</p>
@@ -47,7 +47,7 @@
       <div class="dist" id="dist-02EB013"></div>
     </div>
     <div class="card">
-      <h2>Port Sydney &middot; N. Branch Muskoka R.</h2>
+      <h2 id="card-02EB004">Port Sydney &middot; N. Branch Muskoka R.</h2>
       <div class="big num">8.8<span class="unit">m³/s</span></div>
       <div class="asof">Sep 28, 2026 &middot; 51% of the July average</div>
       <p class="lede">26th percentile of all 40,037 readings on record (1915–2026)</p>
@@ -63,7 +63,7 @@
       <div class="dist" id="dist-02EB004"></div>
     </div>
     <div class="card">
-      <h2>Baysville &middot; S. Branch Muskoka R.</h2>
+      <h2 id="card-02EB008">Baysville &middot; S. Branch Muskoka R.</h2>
       <div class="big num">9.1<span class="unit">m³/s</span></div>
       <div class="asof">Sep 28, 2026 &middot; 41% of the July average</div>
       <p class="lede">18th percentile of all 27,840 readings on record (1941–2026)</p>
@@ -79,7 +79,7 @@
       <div class="dist" id="dist-02EB008"></div>
     </div>
     <div class="card">
-      <h2>Port Carling &middot; Indian River</h2>
+      <h2 id="card-02EB011">Port Carling &middot; Indian River</h2>
       <div class="big num">0.5<span class="unit">m³/s</span></div>
       <div class="asof">Sep 28, 2026 &middot; 4% of the July average</div>
       <p class="lede">3rd percentile of all 21,805 readings on record (1965–2026)</p>
@@ -100,10 +100,10 @@
         <div class="chart-title">Bracebridge — Muskoka River</div>
         <div class="chart-sub">18,935 readings, Jun 22, 1973 to Sep 28, 2026</div>
       </div>
-      <div class="toggles" id="ch-02EB013-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="9999" aria-pressed="false">All 53y</button></div>
+      <div class="toggles" id="ch-02EB013-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="season" aria-pressed="false">Season</button><button type="button" data-value="9999" aria-pressed="false">All 53y</button></div>
     </div>
     <div class="chart-box"><canvas id="ch-02EB013"></canvas></div>
-    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Daily <span class="swatch dot" style="background:#E07B4C"></span>Latest <span class="swatch " style="background:#5BA88A"></span>July avg (5-yr) <span class="swatch " style="background:#6B6B6B"></span>Normal for the date <span class="swatch band" style="background:rgba(107,142,173,0.28)"></span>Middle half <span class="swatch band" style="background:rgba(107,142,173,0.16)"></span>Full range &middot; the "All" view switches to monthly means with each month's range shaded</div>
+    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Daily <span class="swatch dot" style="background:#E07B4C"></span>Latest <span class="swatch " style="background:#5BA88A"></span>July avg (5-yr) <span class="swatch " style="background:#6B6B6B"></span>Normal for the date <span class="swatch band" style="background:rgba(107,142,173,0.28)"></span>Middle half <span class="swatch band" style="background:rgba(107,142,173,0.16)"></span>Full range &middot; "Season" overlays this year and last on the same calendar; "All" switches to monthly means</div>
   </div>
     <div class="chart-card">
     <div class="chart-head">
@@ -111,10 +111,10 @@
         <div class="chart-title">Port Sydney — N. Branch Muskoka R.</div>
         <div class="chart-sub">40,037 readings, Jun 16, 1915 to Sep 28, 2026</div>
       </div>
-      <div class="toggles" id="ch-02EB004-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="9999" aria-pressed="false">All 111y</button></div>
+      <div class="toggles" id="ch-02EB004-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="season" aria-pressed="false">Season</button><button type="button" data-value="9999" aria-pressed="false">All 111y</button></div>
     </div>
     <div class="chart-box"><canvas id="ch-02EB004"></canvas></div>
-    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Daily <span class="swatch dot" style="background:#E07B4C"></span>Latest <span class="swatch " style="background:#5BA88A"></span>July avg (5-yr) <span class="swatch " style="background:#6B6B6B"></span>Normal for the date <span class="swatch band" style="background:rgba(107,142,173,0.28)"></span>Middle half <span class="swatch band" style="background:rgba(107,142,173,0.16)"></span>Full range &middot; the "All" view switches to monthly means with each month's range shaded</div>
+    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Daily <span class="swatch dot" style="background:#E07B4C"></span>Latest <span class="swatch " style="background:#5BA88A"></span>July avg (5-yr) <span class="swatch " style="background:#6B6B6B"></span>Normal for the date <span class="swatch band" style="background:rgba(107,142,173,0.28)"></span>Middle half <span class="swatch band" style="background:rgba(107,142,173,0.16)"></span>Full range &middot; "Season" overlays this year and last on the same calendar; "All" switches to monthly means</div>
   </div>
     <div class="chart-card">
     <div class="chart-head">
@@ -122,10 +122,10 @@
         <div class="chart-title">Baysville — S. Branch Muskoka R.</div>
         <div class="chart-sub">27,840 readings, Aug 15, 1941 to Sep 28, 2026</div>
       </div>
-      <div class="toggles" id="ch-02EB008-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="9999" aria-pressed="false">All 85y</button></div>
+      <div class="toggles" id="ch-02EB008-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="season" aria-pressed="false">Season</button><button type="button" data-value="9999" aria-pressed="false">All 85y</button></div>
     </div>
     <div class="chart-box"><canvas id="ch-02EB008"></canvas></div>
-    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Daily <span class="swatch dot" style="background:#E07B4C"></span>Latest <span class="swatch " style="background:#5BA88A"></span>July avg (5-yr) <span class="swatch " style="background:#6B6B6B"></span>Normal for the date <span class="swatch band" style="background:rgba(107,142,173,0.28)"></span>Middle half <span class="swatch band" style="background:rgba(107,142,173,0.16)"></span>Full range &middot; the "All" view switches to monthly means with each month's range shaded</div>
+    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Daily <span class="swatch dot" style="background:#E07B4C"></span>Latest <span class="swatch " style="background:#5BA88A"></span>July avg (5-yr) <span class="swatch " style="background:#6B6B6B"></span>Normal for the date <span class="swatch band" style="background:rgba(107,142,173,0.28)"></span>Middle half <span class="swatch band" style="background:rgba(107,142,173,0.16)"></span>Full range &middot; "Season" overlays this year and last on the same calendar; "All" switches to monthly means</div>
   </div>
     <div class="chart-card">
     <div class="chart-head">
@@ -133,10 +133,10 @@
         <div class="chart-title">Port Carling — Indian River</div>
         <div class="chart-sub">21,805 readings, May 5, 1965 to Sep 28, 2026</div>
       </div>
-      <div class="toggles" id="ch-02EB011-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="9999" aria-pressed="false">All 61y</button></div>
+      <div class="toggles" id="ch-02EB011-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="season" aria-pressed="false">Season</button><button type="button" data-value="9999" aria-pressed="false">All 61y</button></div>
     </div>
     <div class="chart-box"><canvas id="ch-02EB011"></canvas></div>
-    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Daily <span class="swatch dot" style="background:#E07B4C"></span>Latest <span class="swatch " style="background:#5BA88A"></span>July avg (5-yr) <span class="swatch " style="background:#6B6B6B"></span>Normal for the date <span class="swatch band" style="background:rgba(107,142,173,0.28)"></span>Middle half <span class="swatch band" style="background:rgba(107,142,173,0.16)"></span>Full range &middot; the "All" view switches to monthly means with each month's range shaded</div>
+    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Daily <span class="swatch dot" style="background:#E07B4C"></span>Latest <span class="swatch " style="background:#5BA88A"></span>July avg (5-yr) <span class="swatch " style="background:#6B6B6B"></span>Normal for the date <span class="swatch band" style="background:rgba(107,142,173,0.28)"></span>Middle half <span class="swatch band" style="background:rgba(107,142,173,0.16)"></span>Full range &middot; "Season" overlays this year and last on the same calendar; "All" switches to monthly means</div>
   </div></div>
   <div class="section"><details class="explain"><summary>What &quot;normal for the date&quot; means</summary><div class="body">
       <p>Two comparisons sit on each card and they answer different questions. <strong>Vs July average</strong> compares against the mean of every July day in the last five years: a fixed summer benchmark, useful for "is the lake up or down for the season". <strong>Vs normal for the date</strong> compares against what this gauge has actually done on this calendar date across its whole record.</p>
@@ -168,6 +168,7 @@
   </footer>
 </main>
 <script src="assets/chart.umd.js"></script>
+
 <script src="assets/app.js"></script>
 <script>
 
@@ -176,7 +177,15 @@ Muskoka.getJSON('data/flow.json').then(function (d) {
     var chart = null;
     function draw(days) {
       if (chart) chart.destroy();
-      chart = Muskoka.charts.datedSeries(document.getElementById('ch-' + st.id), st, parseInt(days, 10), st.julyAvg);
+      var el = document.getElementById('ch-' + st.id);
+      if (days === 'season') {
+        var doy = Muskoka.dayOfYearOf(st.latest.date);
+        chart = Muskoka.charts.seasonal(el, Muskoka.charts.seasonalFromStation(st, 2026),
+          { xMin: Math.max(1, doy - 120), xMax: Math.min(366, doy + 20), unit: st.unit, format: st.format,
+            floor: st.decimals === 3 ? 0.01 : 0.5 });
+        return;
+      }
+      chart = Muskoka.charts.datedSeries(el, st, parseInt(days, 10), st.julyAvg);
     }
     draw(90);
     Muskoka.toggleGroup(document.getElementById('ch-' + st.id + '-toggles'), draw);
@@ -193,6 +202,7 @@ Muskoka.getJSON('data/flow.json').then(function (d) {
     Muskoka.toggleGroup(document.getElementById('ch-cmp-toggles'), drawCmp);
   }
 });
+
 </script>
 </body>
 </html>

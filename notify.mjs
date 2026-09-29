@@ -537,6 +537,53 @@ async function fetchAnnualPeaks(stationId) {
   }
 }
 
+// ── Gauge locations ──
+//
+// Where each gauge actually is, for the site's map. Fetched once per station
+// from the hydrometric-stations collection and cached for good: coordinates do
+// not move, so there is no reason to ask twice. A feature whose geometry is not
+// the OGC [lon, lat] pair is reported and skipped rather than guessed at, and
+// the site simply omits the map for any gauge it has no position for.
+const STATIONS_PATH = ARCHIVE_DIR + 'stations.json';
+
+export async function loadStations() {
+  try {
+    const rows = JSON.parse(await fs.readFile(STATIONS_PATH, 'utf8'));
+    return Array.isArray(rows) ? rows.filter(r => r && r.id && Number.isFinite(r.lat) && Number.isFinite(r.lon)) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function ensureStations(ids) {
+  const existing = await loadStations();
+  const have = new Set(existing.map(s => s.id));
+  const missing = ids.filter(id => !have.has(id));
+  if (missing.length === 0) return existing;
+  const out = [...existing];
+  for (const id of missing) {
+    try {
+      const data = await fetchJSON(`${API_BASE}/hydrometric-stations/items?f=json&STATION_NUMBER=${id}&limit=5`);
+      const f = (data.features || []).find(x => x?.properties?.STATION_NUMBER === id) || (data.features || [])[0];
+      const c = f?.geometry?.coordinates;
+      if (!f || !Array.isArray(c) || c.length < 2 || !Number.isFinite(c[0]) || !Number.isFinite(c[1])) {
+        console.log(`    Station ${id}: no usable geometry` +
+          (f ? ` (geometry type ${f.geometry?.type ?? 'none'}; properties: ${Object.keys(f.properties || {}).slice(0, 8).join(', ')})` : ' (no feature returned)'));
+        continue;
+      }
+      out.push({ id, name: f.properties?.STATION_NAME ?? null, lon: c[0], lat: c[1] });
+    } catch (e) {
+      console.log(`    Station ${id} lookup failed: ${e.message}`);
+    }
+  }
+  if (out.length > existing.length) {
+    await fs.mkdir(ARCHIVE_DIR, { recursive: true });
+    await fs.writeFile(STATIONS_PATH, JSON.stringify(out, null, 1) + '\n', 'utf8');
+    console.log(`  Gauge locations cached: ${out.length} of ${ids.length}`);
+  }
+  return out;
+}
+
 export async function loadAnnualPeaks() {
   try {
     const text = await fs.readFile(ANNUAL_PEAKS_PATH, 'utf8');
@@ -1792,6 +1839,9 @@ async function main() {
   } else {
     console.log('  Annual peaks: none returned; keeping any existing archive');
   }
+
+  // One request per gauge, once ever — see ensureStations.
+  await ensureStations(peakStations);
 
   await saveManifest();
   console.log('  Level/flow archive saved');

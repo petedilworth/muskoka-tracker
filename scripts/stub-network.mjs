@@ -49,6 +49,15 @@ globalThis.fetch = async (input, opts = {}) => {
       feats = merged(stn, from, HYDAT_END).map(([date, p]) => ({
         properties: { STATION_NUMBER: stn, DATE: date, LEVEL: p.LEVEL ?? null, DISCHARGE: p.DISCHARGE ?? null },
       }));
+    } else if (u.pathname.includes('hydrometric-stations')) {
+      // Stand-in positions so the coordinate cache path runs offline. They are
+      // not the real gauge locations; the live run replaces them.
+      const fake = { '02EB015': [-79.62, 45.01], '02EB018': [-79.58, 45.05], '02EB020': [-79.58, 45.11],
+        '02EB004': [-79.28, 45.20], '02EB008': [-79.11, 45.15], '02EB006': [-79.63, 45.02],
+        '02EB013': [-79.31, 45.04], '02EB011': [-79.57, 45.10] };
+      const c = fake[stn];
+      feats = c ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: c },
+        properties: { STATION_NUMBER: stn, STATION_NAME: 'STUB ' + stn } }] : [];
     }
     // annual-peaks and anything else: empty, which the code treats as "keep the archive"
     const page = feats.slice(offset, offset + limit);

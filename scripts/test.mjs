@@ -16,7 +16,7 @@ import {
   quantile, distribution, percentileOf, climatology, windowByDate,
   buildLevelsPayload, buildFlowPayload, buildRecordsPayload,
   dayOfYearEnvelope, withDayOfYear, extremes, biggestSwings, longestStreak, onThisDate,
-  coverageGaps, recentCoverageGaps, peaksFor,
+  coverageGaps, recentCoverageGaps, peaksFor, swimDays,
 } from './lib/payloads.mjs';
 
 let passed = 0;
@@ -555,6 +555,33 @@ test('the shapes a mistyped secret takes are rejected', () => {
   assert.ok(!validFrom('Muskoka Tracker <onboarding@resend.dev'), 'unclosed bracket');
   assert.ok(!validFrom(''), 'empty');
   assert.ok(!validFrom(undefined), 'unset');
+});
+
+// Swim days: warm days so far this year against what other years had by the
+// same date. A year missing most of its readings must not drag the median down.
+const rec = (date, t) => toRecord(date, t);
+test('swim days count this year and take the typical from complete years only', () => {
+  const recs = [];
+  // 2024: warm from day 150 on, complete
+  for (let d = 1; d <= 200; d++) recs.push(rec(`2024-${String(new Date(Date.UTC(2024,0,d)).getUTCMonth()+1).padStart(2,'0')}-${String(new Date(Date.UTC(2024,0,d)).getUTCDate()).padStart(2,'0')}`, d >= 150 ? 22 : 10));
+  // 2025: warm from day 170 on, complete
+  for (let d = 1; d <= 200; d++) recs.push(rec(`2025-${String(new Date(Date.UTC(2025,0,d)).getUTCMonth()+1).padStart(2,'0')}-${String(new Date(Date.UTC(2025,0,d)).getUTCDate()).padStart(2,'0')}`, d >= 170 ? 22 : 10));
+  // 2023: only ten readings, all warm — incomplete, must be excluded
+  for (let d = 190; d <= 199; d++) recs.push(rec(`2023-07-${String(d - 181).padStart(2,'0')}`, 25));
+  // 2026: warm from day 160
+  for (let d = 1; d <= 200; d++) recs.push(rec(`2026-${String(new Date(Date.UTC(2026,0,d)).getUTCMonth()+1).padStart(2,'0')}-${String(new Date(Date.UTC(2026,0,d)).getUTCDate()).padStart(2,'0')}`, d >= 160 ? 21 : 10));
+  const sw = swimDays(recs, 2026, 200);
+  assert.equal(sw.thisYear, 41);
+  assert.equal(sw.years, 2, '2023 is too thin to count');
+  assert.equal(sw.typical, Math.round((51 + 31) / 2));
+  assert.deepEqual(sw.best, { year: 2024, days: 51 });
+});
+
+test('swim days respects the cutoff day', () => {
+  const recs = [];
+  for (let d = 1; d <= 200; d++) recs.push(rec(`2026-${String(new Date(Date.UTC(2026,0,d)).getUTCMonth()+1).padStart(2,'0')}-${String(new Date(Date.UTC(2026,0,d)).getUTCDate()).padStart(2,'0')}`, 25));
+  assert.equal(swimDays(recs, 2026, 100).thisYear, 100);
+  assert.equal(swimDays(recs, 2026, 100).typical, null, 'no other years, no typical');
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ', 0 failed'}`);

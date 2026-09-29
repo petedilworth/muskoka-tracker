@@ -90,7 +90,9 @@
           ticks: {
             callback: opts.xTick || function (v) { return v; },
             font: { size: 10 }, color: C.muted,
-            maxRotation: 0, autoSkip: true, maxTicksLimit: opts.xTicks || 7
+            // Seven date labels overlap at phone width ("Sep 19Sep 28"); five fit.
+            maxRotation: 0, autoSkip: true,
+            maxTicksLimit: opts.xTicks || (window.innerWidth < 520 ? 5 : 7)
           },
           grid: { display: false, drawBorder: true, borderColor: C.axis }
         },
@@ -102,7 +104,10 @@
           suggestedMax: opts.yHard ? undefined : opts.yMax,
           ticks: {
             callback: function (v) { return fmt(v, opts.yFormat || 'f1'); },
-            font: { size: 10 }, color: C.muted, maxTicksLimit: 6
+            font: { size: 10 }, color: C.muted, maxTicksLimit: 6,
+            // With hard bounds the padded edge values would otherwise be
+            // printed as ticks ("225.544"); let the scale pick round ones.
+            includeBounds: false
           },
           grid: { color: C.grid, drawBorder: false }
         }
@@ -162,25 +167,36 @@
 
   // ── charts ──
 
-  // Current year against the climatology envelope. Two stacked fills give the
-  // p25-p75 band inside the min-max band; both are emitted as explicit paired
-  // traces rather than relying on fill-to-dataset across nulls.
-  function tempClimatology(canvas, payload, opts) {
+  // One year against the envelope of every other year, by day of the year.
+  // Two stacked fills give the p25–p75 band inside the min–max band; both are
+  // emitted as explicit paired traces rather than relying on fill-to-dataset
+  // across nulls. Serves temperature, level and flow alike: the payload shape
+  // is the same, only the unit and format differ.
+  //
+  //   payload: { climatology: [[day, min, p25, p50, p75, max], …],
+  //              current: { year, series: [[day, v], …] },
+  //              previous: { year, series }, latest: { dayOfYear, value } }
+  function seasonal(canvas, payload, opts) {
+    opts = opts || {};
     var clim = payload.climatology;
     var xMin = opts.xMin || 1, xMax = opts.xMax || 366;
+    var unit = opts.unit || '', format = opts.format || 'f1';
     var pick = function (i) {
       return clim.filter(function (r) { return r[0] >= xMin && r[0] <= xMax; })
                  .map(function (r) { return { x: r[0], y: r[i] }; });
     };
     var series = function (arr) {
-      return arr.filter(function (p) { return p[0] >= xMin && p[0] <= xMax; })
-                .map(function (p) { return { x: p[0], y: p[1] }; });
+      return (arr || []).filter(function (p) { return p[0] >= xMin && p[0] <= xMax; })
+                        .map(function (p) { return { x: p[0], y: p[1] }; });
     };
     var cur = series(payload.current.series);
-    var prev = series(payload.previous.series);
+    var prev = payload.previous ? series(payload.previous.series) : [];
 
     var ys = cur.concat(pick(1), pick(5)).map(function (p) { return p.y; });
-    var b = pad(ys, [], 0.08, 0.5);
+    var b = pad(ys, [], 0.08, opts.floor === undefined ? 0.5 : opts.floor);
+    // Discharge cannot go negative; do not pad a river below zero.
+    var seen = ys.filter(function (v) { return v !== null && isFinite(v); });
+    if (seen.length && Math.min.apply(null, seen) >= 0 && b.min < 0) b.min = 0;
 
     var ds = [
       { label: 'Record low', data: pick(1), borderWidth: 0, pointRadius: 0, fill: false, tension: 0.3 },
@@ -189,22 +205,112 @@
       { label: '75th pct', data: pick(4), borderWidth: 0, pointRadius: 0, fill: '-1', backgroundColor: C.bandInner, tension: 0.3 },
       { label: 'Median', data: pick(3), borderColor: C.muted, borderWidth: 1, borderDash: [4, 3], pointRadius: 0, fill: false, tension: 0.3 }
     ];
-    if (prev.length) ds.push({ label: String(payload.previous.year), data: prev, borderColor: C.red, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3 });
-    ds.push({ label: String(payload.current.year), data: cur, borderColor: C.blue, borderWidth: 2.5, pointRadius: 0, fill: false, tension: 0.3 });
-    ds.push({
-      label: 'Latest', data: [{ x: payload.latest.dayOfYear, y: payload.latest.value }],
-      showLine: false, pointRadius: 5, pointBackgroundColor: C.orange,
-      pointBorderColor: '#fff', pointBorderWidth: 1.5
-    });
+    if (prev.length) ds.push({ label: String(payload.previous.year), data: prev, borderColor: C.red, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3, spanGaps: false });
+    ds.push({ label: String(payload.current.year), data: cur, borderColor: C.blue, borderWidth: 2.5, pointRadius: 0, fill: false, tension: 0.3, spanGaps: false });
+    if (payload.latest && payload.latest.dayOfYear >= xMin && payload.latest.dayOfYear <= xMax) {
+      ds.push({
+        label: 'Latest', data: [{ x: payload.latest.dayOfYear, y: payload.latest.value }],
+        showLine: false, pointRadius: 5, pointBackgroundColor: C.orange,
+        pointBorderColor: '#fff', pointBorderWidth: 1.5
+      });
+    }
 
     var o = baseOptions({
       xMin: xMin, xMax: xMax, yMin: b.min, yMax: b.max, yHard: true,
-      yLabel: '°C', yFormat: 'f1', unit: '°C',
+      yLabel: unit, yFormat: format, unit: unit,
       xTick: function (v) { return dayOfYearLabel(v); },
       tipTitle: function (item) { return dayOfYearLabel(item.parsed.x); }
     });
     o.plugins.tooltip.filter = function (ctx) { return ctx.dataset.borderWidth > 0 || ctx.dataset.label === 'Latest'; };
     return new Chart(canvas, { type: 'line', data: { datasets: ds }, options: o });
+  }
+
+  function tempClimatology(canvas, payload, opts) {
+    return seasonal(canvas, payload, { xMin: opts.xMin, xMax: opts.xMax, unit: '°C', format: 'f1', floor: 0.5 });
+  }
+
+  // A level or flow station carries its envelope and two years of dated rows.
+  // Re-keying those rows by day of the year is indexing, not computation — the
+  // same dayOfYear() the envelope lookup already uses — so it is done here
+  // rather than shipping every series a second time in a second shape.
+  function seasonalFromStation(station, currentYear) {
+    var byYear = {};
+    (station.series || []).forEach(function (r) {
+      if (!r[0] || r[1] === null) return;
+      var y = parseInt(r[0].substring(0, 4), 10);
+      (byYear[y] = byYear[y] || []).push([dayOfYear(r[0]), r[1]]);
+    });
+    var latest = station.latest || null;
+    return {
+      climatology: station.normal.envelope,
+      current: { year: currentYear, series: byYear[currentYear] || [] },
+      previous: { year: currentYear - 1, series: byYear[currentYear - 1] || [] },
+      latest: latest ? { dayOfYear: dayOfYear(latest.date), value: latest.value } : null
+    };
+  }
+
+  // Yearly means as bars. The current year is partial and drawn hollow so it
+  // cannot be read as a full-year figure.
+  function yearBars(canvas, yearMeans, currentYear, opts) {
+    opts = opts || {};
+    var rows = yearMeans.filter(function (r) { return r[1] !== null; });
+    var minDays = opts.minDays || 350;
+    var partial = function (r) { return r[0] === currentYear || r[2] < minDays; };
+    var ys = rows.map(function (r) { return r[1]; });
+    var b = pad(ys, [], 0.15, 0.5);
+    var o = baseOptions({
+      xMin: rows[0][0] - 0.6, xMax: rows[rows.length - 1][0] + 0.6,
+      yMin: opts.fromZero ? 0 : b.min, yMax: b.max, yHard: true,
+      yLabel: opts.unit || '', yFormat: opts.format || 'f1', unit: opts.unit || '',
+      xTicks: 13,
+      xTick: function (v) { return Number.isInteger(v) ? String(v) : ''; },
+      tipTitle: function (item) {
+        var r = rows[item.dataIndex];
+        return String(r[0]) + (partial(r) ? ' (partial year, ' + r[2] + ' days)' : '');
+      }
+    });
+    o.scales.x.ticks.autoSkip = true;
+    return new Chart(canvas, {
+      type: 'bar',
+      data: {
+        datasets: [{
+          label: opts.label || 'Mean',
+          data: rows.map(function (r) { return { x: r[0], y: r[1] }; }),
+          backgroundColor: rows.map(function (r) { return partial(r) ? 'transparent' : C.blue; }),
+          borderColor: C.blue,
+          borderWidth: rows.map(function (r) { return partial(r) ? 2 : 0; }),
+          barPercentage: 0.85, categoryPercentage: 1
+        }]
+      },
+      options: o
+    });
+  }
+
+  // The gauges on a real map. Leaflet is vendored next to Chart.js; tiles come
+  // from OpenStreetMap at view time. Circle markers rather than the default
+  // pins, so no image assets are needed. Each marker links to its gauge card.
+  function gaugeMap(el, stations, opts) {
+    if (!window.L || !el || !stations || !stations.length) return null;
+    opts = opts || {};
+    var map = L.map(el, { scrollWheelZoom: false, attributionControl: true });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 17,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    var pts = [];
+    stations.forEach(function (st) {
+      if (!isFinite(st.lat) || !isFinite(st.lon)) return;
+      var colour = st.measure === 'flow' ? C.green : C.blue;
+      var m = L.circleMarker([st.lat, st.lon], {
+        radius: 7, color: '#fff', weight: 2, fillColor: colour, fillOpacity: 0.95
+      }).addTo(map);
+      var line = '<strong>' + st.name + '</strong><br>' + st.label + (st.reading ? '<br>' + st.reading : '');
+      m.bindTooltip(line, { direction: 'top', offset: [0, -8] });
+      if (st.href) m.on('click', function () { window.location.href = st.href; });
+      pts.push([st.lat, st.lon]);
+    });
+    if (pts.length) map.fitBounds(pts, { padding: [28, 28], maxZoom: opts.maxZoom || 11 });
+    return map;
   }
 
   function tempAllYears(canvas, all, current) {
@@ -400,8 +506,13 @@
     return new Chart(canvas, {
       type: 'line',
       data: { datasets: ds },
+      // Hard bounds, not suggestions. The bounds above deliberately leave the
+      // full-range band out so a record flood cannot squash three months of
+      // readings into a flat line — but a suggested axis grows to fit every
+      // dataset drawn, band included, and that is exactly what the flow charts
+      // did. Clipping the band at the top is the intended result.
       options: baseOptions({
-        xMin: 0, xMax: values.length - 1, yMin: b.min, yMax: b.max,
+        xMin: 0, xMax: values.length - 1, yMin: b.min, yMax: b.max, yHard: true,
         yLabel: station.unit, yFormat: station.format, unit: station.unit,
         xTick: function (v) {
           if (!labels[v]) return '';
@@ -469,11 +580,14 @@
 
   window.Muskoka = {
     fmt: fmt, ordinal: ordinal, shortDate: shortDate, longDate: longDate,
-    dayOfYearLabel: dayOfYearLabel, renderDist: renderDist,
+    dayOfYearLabel: dayOfYearLabel, dayOfYearOf: dayOfYear, renderDist: renderDist,
     charts: {
+      seasonal: seasonal, seasonalFromStation: seasonalFromStation,
       tempClimatology: tempClimatology, tempAllYears: tempAllYears,
-      tempAnomaly: tempAnomaly, datedSeries: datedSeries, comparison: comparison
+      tempAnomaly: tempAnomaly, datedSeries: datedSeries, comparison: comparison,
+      yearBars: yearBars
     },
+    gaugeMap: gaugeMap,
     toggleGroup: toggleGroup, getJSON: getJSON
   };
 })();
