@@ -1,0 +1,50 @@
+[
+ {
+  "id": "02EB015",
+  "name": "BALA BAY AT BALA",
+  "lon": -79.61353302001953,
+  "lat": 45.01314163208008
+ },
+ {
+  "id": "02EB018",
+  "name": "LAKE MUSKOKA AT BEAUMARIS",
+  "lon": -79.49382781982422,
+  "lat": 45.07041931152344
+ },
+ {
+  "id": "02EB020",
+  "name": "LAKE ROSSEAU AT PORT CARLING",
+  "lon": -79.57649993896484,
+  "lat": 45.120079040527344
+ },
+ {
+  "id": "02EB004",
+  "name": "NORTH BRANCH MUSKOKA RIVER AT PORT SYDNEY",
+  "lon": -79.27528381347656,
+  "lat": 45.21286010742188
+ },
+ {
+  "id": "02EB008",
+  "name": "SOUTH BRANCH MUSKOKA RIVER AT BAYSVILLE",
+  "lon": -79.1135025024414,
+  "lat": 45.14796829223633
+ },
+ {
+  "id": "02EB006",
+  "name": "MUSKOKA RIVER BELOW BALA",
+  "lon": -79.67832946777344,
+  "lat": 45.022499084472656
+ },
+ {
+  "id": "02EB013",
+  "name": "BIG EAST RIVER NEAR HUNTSVILLE",
+  "lon": -79.15994262695312,
+  "lat": 45.39271926879883
+ },
+ {
+  "id": "02EB011",
+  "name": "MOON RIVER AT HIGHWAY NO. 400",
+  "lon": -79.7901382446289,
+  "lat": 45.065059661865234
+ }
+]

@@ -8,7 +8,7 @@
 <title>Muskoka Tracker — about the data</title>
 <!-- Inline so the browser never fires a request for /favicon.ico -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8C%8A%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/site.css"><link rel="stylesheet" href="assets/leaflet/leaflet.css">
 </head>
 <body>
 <header class="site">
@@ -50,35 +50,39 @@
     <p>Gauge 02EB006 (Bala) is not shown: its most recent reading is from Dec 31, 2021.</p>
   </div>
 
-  
+  <div style="margin-top:14px;"><div class="chart-card map-card">
+    <div class="chart-head"><div><div class="chart-title">The gauges</div><div class="chart-sub">Every station this site reads. Click a marker to open its page.</div></div></div>
+    <div class="map-box" id="map-about"></div>
+    <div class="legend"><span class="swatch dot" style="background:#2D6A9F"></span>Level gauge <span class="swatch dot" style="background:#5BA88A"></span>Flow gauge &middot; map tiles © OpenStreetMap contributors</div>
+  </div></div>
 
   <div class="card" style="margin-top:14px;">
     <h2>Coverage</h2>
     <div class="table-scroll"><table class="kv">
     <tr><th>Series</th><th>Range</th><th>Readings</th></tr>
-    <tr><td>Water temperature</td><td class="n">Jun 1, 2002 – Sep 22, 2026</td><td class="n">8,878</td></tr>
-    <tr><td>Level · Bala</td><td class="n">Jan 1, 2003 – Sep 28, 2026</td><td class="n">8486</td></tr>
-    <tr><td>Level · Beaumaris</td><td class="n">Nov 1, 2002 – Sep 28, 2026</td><td class="n">8167</td></tr>
-    <tr><td>Level · Port Carling</td><td class="n">Nov 1, 2002 – Sep 28, 2026</td><td class="n">8101</td></tr>
-    <tr><td>Level · Port Sydney</td><td class="n">Jan 1, 2002 – Sep 28, 2026</td><td class="n">8374</td></tr>
-    <tr><td>Level · Baysville</td><td class="n">Oct 23, 2002 – Sep 28, 2026</td><td class="n">8176</td></tr>
-    <tr><td>Flow · Bracebridge</td><td class="n">Jun 22, 1973 – Sep 28, 2026</td><td class="n">18935</td></tr>
-    <tr><td>Flow · Port Sydney</td><td class="n">Jun 16, 1915 – Sep 28, 2026</td><td class="n">40037</td></tr>
-    <tr><td>Flow · Baysville</td><td class="n">Aug 15, 1941 – Sep 28, 2026</td><td class="n">27840</td></tr>
-    <tr><td>Flow · Port Carling</td><td class="n">May 5, 1965 – Sep 28, 2026</td><td class="n">21805</td></tr>
+    <tr><td>Water temperature</td><td class="n">Jun 1, 2002 – Sep 26, 2026</td><td class="n">8,882</td></tr>
+    <tr><td>Level · Bala</td><td class="n">Jan 1, 2003 – Sep 29, 2026</td><td class="n">8487</td></tr>
+    <tr><td>Level · Beaumaris</td><td class="n">Nov 1, 2002 – Sep 29, 2026</td><td class="n">8168</td></tr>
+    <tr><td>Level · Port Carling</td><td class="n">Nov 1, 2002 – Sep 29, 2026</td><td class="n">8102</td></tr>
+    <tr><td>Level · Port Sydney</td><td class="n">Jan 1, 2002 – Sep 29, 2026</td><td class="n">8375</td></tr>
+    <tr><td>Level · Baysville</td><td class="n">Oct 23, 2002 – Sep 29, 2026</td><td class="n">8177</td></tr>
+    <tr><td>Flow · Bracebridge</td><td class="n">Jun 22, 1973 – Sep 29, 2026</td><td class="n">18936</td></tr>
+    <tr><td>Flow · Port Sydney</td><td class="n">Jun 16, 1915 – Sep 29, 2026</td><td class="n">40038</td></tr>
+    <tr><td>Flow · Baysville</td><td class="n">Aug 15, 1941 – Sep 29, 2026</td><td class="n">27841</td></tr>
+    <tr><td>Flow · Port Carling</td><td class="n">May 5, 1965 – Sep 29, 2026</td><td class="n">21806</td></tr>
   </table></div>
   </div>
   <footer class="site">
     Gauge data: Environment and Climate Change Canada, MSC GeoMet (station 02EB015 and neighbours).
     Water temperature: NOAA MUR SST v4.1 satellite analysis.<br>
-    Rebuilt automatically each morning. Generated 2026-09-28.
+    Rebuilt automatically each morning. Generated 2026-09-29.
   </footer>
 </main>
 <script src="assets/chart.umd.js"></script>
-
+<script src="assets/leaflet/leaflet.js"></script>
 <script src="assets/app.js"></script>
 <script>
-
+Muskoka.gaugeMap(document.getElementById('map-about'), [{"id":"02EB015","name":"Bala","label":"Lake Muskoka","measure":"level","lat":45.01314163208008,"lon":-79.61353302001953,"reading":"225.201 m · Sep 29, 2026","href":"levels.html#card-02EB015"},{"id":"02EB018","name":"Beaumaris","label":"Lake Muskoka","measure":"level","lat":45.07041931152344,"lon":-79.49382781982422,"reading":"9.340 m · Sep 29, 2026","href":"levels.html#card-02EB018"},{"id":"02EB020","name":"Port Carling","label":"Lake Rosseau","measure":"level","lat":45.120079040527344,"lon":-79.57649993896484,"reading":"8.810 m · Sep 29, 2026","href":"levels.html#card-02EB020"},{"id":"02EB004","name":"Port Sydney","label":"N. Branch Muskoka R.","measure":"level","lat":45.21286010742188,"lon":-79.27528381347656,"reading":"0.789 m · Sep 29, 2026","href":"levels.html#card-02EB004"},{"id":"02EB008","name":"Baysville","label":"S. Branch Muskoka R.","measure":"level","lat":45.14796829223633,"lon":-79.1135025024414,"reading":"7.571 m · Sep 29, 2026","href":"levels.html#card-02EB008"},{"id":"02EB013","name":"Bracebridge","label":"Muskoka River","measure":"flow","lat":45.39271926879883,"lon":-79.15994262695312,"reading":"1.8 m³/s · Sep 29, 2026","href":"flow.html#card-02EB013"},{"id":"02EB004","name":"Port Sydney","label":"N. Branch Muskoka R.","measure":"flow","lat":45.21286010742188,"lon":-79.27528381347656,"reading":"8.6 m³/s · Sep 29, 2026","href":"flow.html#card-02EB004"},{"id":"02EB008","name":"Baysville","label":"S. Branch Muskoka R.","measure":"flow","lat":45.14796829223633,"lon":-79.1135025024414,"reading":"9.0 m³/s · Sep 29, 2026","href":"flow.html#card-02EB008"},{"id":"02EB011","name":"Port Carling","label":"Indian River","measure":"flow","lat":45.065059661865234,"lon":-79.7901382446289,"reading":"0.5 m³/s · Sep 29, 2026","href":"flow.html#card-02EB011"}]);
 </script>
 </body>
 </html>
