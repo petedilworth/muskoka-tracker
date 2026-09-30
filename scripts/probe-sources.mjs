@@ -611,6 +611,33 @@ async function probeIceAndCopernicus() {
     // "ice in" as well as "ice out"? Say which words the page uses.
     const words = ['ice in', 'ice-in', 'ice out', 'ice-out', 'freeze', 'break-up', 'breakup'].filter(w => new RegExp(w, 'i').test(pg.text));
     console.log(dim(`    terms on page: ${words.join(', ') || 'none of the usual ones'}`));
+
+    // The first run found two of these pages "empty": HTTP 200, no tables, not
+    // even the words "ice out" in the markup. That means the content is put
+    // there by script, or lives in an embedded document or image. Say which,
+    // and list anything embedded that a runner could fetch directly instead.
+    const bodyText = pg.text.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (bodyText.length < 600) {
+      console.log(`    ${bad('raw HTML carries almost no text')} (${bodyText.length} chars) — rendered by script; a plain fetch cannot read it`);
+    }
+    const attr = (re) => [...new Set([...pg.text.matchAll(re)].map(m => m[1]))];
+    const docs = attr(/(?:src|href)=["']([^"']+\.(?:pdf|png|jpe?g|gif|webp|csv|xlsx?)(?:\?[^"']*)?)["']/gi)
+      .filter(u => !/logo|icon|favicon|sprite|avatar|banner|header|footer|arrow|button/i.test(u)).slice(0, 12);
+    const frames = attr(/<iframe\b[^>]*\bsrc=["']([^"']+)["']/gi).slice(0, 6);
+    const sheets = [...new Set((pg.text.match(/https?:\/\/docs\.google\.com\/[^"'\s<>]+/g) || []))].slice(0, 4);
+    const scripts = attr(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi).filter(u => /wix|squarespace|static\.parastorage|wp-content\/plugins/i.test(u)).slice(0, 3);
+    if (docs.length) console.log(`    embedded documents/images: ${docs.join(' | ')}`);
+    if (frames.length) console.log(`    iframes: ${frames.join(' | ')}`);
+    if (sheets.length) console.log(`    google docs/sheets: ${sheets.join(' | ')}`);
+    if (scripts.length) console.log(dim(`    platform hints: ${scripts.join(' | ')}`));
+    // Where there ARE tables but the extractor found little, show what the
+    // cells actually say so the next pattern is written against them.
+    if (tables > 0 && pairs.length < 5) {
+      const cells = [...pg.text.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)]
+        .map(m => m[1].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+      console.log(`    first table cells: ${cells.slice(0, 40).join(' · ').slice(0, 700)}`);
+    }
     await pause(700);
   }
 }
