@@ -196,10 +196,23 @@
       <code class="formula">value = (level − that gauge's 5-year July mean) ÷ 2.54 cm per inch</code>
       <p>Subtracting each gauge's own July average removes the datum and leaves the part that is actually comparable: how high the water is running for the season.</p></div></details>
   </div>
+  <section class="sources">
+    <h2>Sources for this page</h2>
+    <ul>
+      <li><strong>Water level</strong> —
+    Environment and Climate Change Canada, Water Survey of Canada gauges via the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean">MSC GeoMet hydrometric daily-mean</a> and
+    <a href="https://api.weather.gc.ca/collections/hydrometric-realtime">realtime</a> collections.
+    Daily means are the published record; realtime readings, averaged to a day, fill the months the daily means have not yet reached.<br>
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB015&limit=10">02EB015</a> Bala <span class="official">BALA BAY AT BALA</span> &middot; Jan 1, 2003 – Oct 6, 2026, 8,494 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB018&limit=10">02EB018</a> Beaumaris <span class="official">LAKE MUSKOKA AT BEAUMARIS</span> &middot; Nov 1, 2002 – Oct 6, 2026, 8,175 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB020&limit=10">02EB020</a> Port Carling <span class="official">LAKE ROSSEAU AT PORT CARLING</span> &middot; Nov 1, 2002 – Oct 6, 2026, 8,109 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB004&limit=10">02EB004</a> Port Sydney <span class="official">NORTH BRANCH MUSKOKA RIVER AT PORT SYDNEY</span> &middot; Jan 1, 2002 – Oct 6, 2026, 8,382 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB008&limit=10">02EB008</a> Baysville <span class="official">SOUTH BRANCH MUSKOKA RIVER AT BAYSVILLE</span> &middot; Oct 23, 2002 – Oct 6, 2026, 8,184 days</li>
+      <li><strong>Lake regulation</strong> — Lake Muskoka's level is set by dams at Bala and Port Carling under Ontario's Muskoka River Water Management Plan. Nothing here is adjusted for that; these are the gauge readings as published.</li>
+      <li><strong>Derived figures</strong> — The July average, "normal for the date", percentiles and the normalised comparison are computed by this site from the series above; the formulas are in the explainers on the page.</li>
+      <li><strong>Map</strong> — gauge positions from the <a href="https://api.weather.gc.ca/collections/hydrometric-stations">hydrometric-stations</a> collection; tiles © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</li>
+    </ul>
+  </section>
   <footer class="site">
-    Gauge data: Environment and Climate Change Canada, MSC GeoMet (station 02EB015 and neighbours).
-    Water temperature: NOAA MUR SST v4.1 satellite analysis.<br>
     Rebuilt automatically each morning. Generated 2026-10-06.
+    Full detail on every source is on the <a href="about.html">about page</a>.
   </footer>
 </main>
 <script src="assets/chart.umd.js"></script>

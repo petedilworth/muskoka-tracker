@@ -489,7 +489,7 @@ function stationBlock(st, days, { unit, format, decimals, measure }, currentYear
     // across stations.
     //
     // Flow — a ratio, not a difference. Discharge swings across orders of
-    // magnitude with the season (0.33 to 177 m³/s at Port Carling), so a
+    // magnitude with the season (0.33 to 177 m³/s on the Moon River), so a
     // subtraction says little; and dividing m³/s by 2.54 to call it "inches",
     // as this did when the two measures shared one formula, is meaningless.
     vsJulyIn: (measure === 'level' && avg !== null)
@@ -561,8 +561,8 @@ export function buildFlowPayload(cache, todayIso) {
     }
     stations.push(stationBlock(st, days, { unit: 'm³/s', format: 'f1', decimals: 1, measure: 'flow' }, currentYear));
   }
-  // Discharge spans orders of magnitude between gauges (Port Carling peaks at
-  // 177 m³/s, Baysville at 56), so raw m³/s on one axis just ranks catchment
+  // Discharge spans orders of magnitude between gauges (the Moon River peaks
+  // near 177 m³/s, Baysville near 56), so raw m³/s on one axis just ranks catchment
   // size. Percent of each gauge's own July mean is the comparable quantity.
   const withAvg = stations.filter(s => s.julyAvg !== null && s.julyAvg !== 0 && s.series.length > 0);
   const maps = withAvg.map(s => new Map(s.series));

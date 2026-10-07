@@ -193,7 +193,19 @@ code.formula {
   overflow-x: auto; white-space: pre-wrap; color: var(--ink);
 }
 
-footer.site { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--grid);
+/* ── sources ── */
+/* Every page ends by naming where its numbers came from. Quiet, but not
+   hidden: the official station names sit beside the short labels so a wrong
+   label is visible rather than buried in a config file. */
+.sources { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--grid); font-size: 12px; color: var(--muted); }
+.sources h2 { margin: 0 0 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.sources ul { margin: 0; padding-left: 18px; }
+.sources li { margin: 0 0 8px; line-height: 1.5; }
+.sources strong { color: var(--ink-2); font-weight: 600; }
+.sources .official { font-size: 10.5px; color: var(--faint); letter-spacing: 0.02em; }
+.sources a { color: var(--blue); }
+
+footer.site { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--grid);
   font-size: 11px; color: var(--faint); }
 footer.site a { color: var(--muted); }
 

@@ -4,8 +4,7 @@ Daily water conditions for Lake Muskoka and Lake Rosseau — a morning email plu
 a static dashboard, both rebuilt automatically and hosted for free.
 
 Covers nine gauge slots: water levels at Bala, Beaumaris, Port Carling, Port
-Sydney and Baysville, and river flow on both branches of the Muskoka River and
-the Indian River. Water temperature comes from satellite, with an archive going
+Sydney and Baysville, and river flow on the Muskoka River below Bala, the Big East River near Huntsville, the North and South Branches at Port Sydney and Baysville, and the Moon River at Highway 400 where Lake Muskoka drains. Water temperature comes from satellite, with an archive going
 back to 2002.
 
 ## How it works

@@ -36,7 +36,7 @@ const NAV = [
   ['about.html', 'About'],
 ];
 
-function page({ file, title, heading, sub, body, script, map }) {
+function page({ file, title, heading, sub, body, script, map, sources }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -66,10 +66,15 @@ function page({ file, title, heading, sub, body, script, map }) {
   <h2 style="margin:0 0 2px;font-size:22px;">${esc(heading)}</h2>
   <p style="margin:0 0 18px;color:var(--muted);font-size:13px;">${sub}</p>
 ${body}
+${sources && sources.length ? `  <section class="sources">
+    <h2>Sources for this page</h2>
+    <ul>
+      ${sources.map(x => `<li>${x}</li>`).join('\n      ')}
+    </ul>
+  </section>` : ''}
   <footer class="site">
-    Gauge data: Environment and Climate Change Canada, MSC GeoMet (station 02EB015 and neighbours).
-    Water temperature: NOAA MUR SST v4.1 satellite analysis.<br>
     Rebuilt automatically each morning. Generated ${TODAY_ISO}.
+    Full detail on every source is on the <a href="about.html">about page</a>.
   </footer>
 </main>
 <script src="assets/chart.umd.js"></script>
@@ -163,6 +168,47 @@ function staleNotice(ageDays, what, threshold) {
   return `<div class="notice">The most recent ${what} reading is ${ageDays} days old. Everything below describes that reading, not today.</div>`;
 }
 
+
+// ── sources ──
+// Every page names where its own numbers came from, with the station as
+// Environment Canada names it (from the cached station metadata) rather than
+// the short label this site uses. Two flow gauges were mislabelled for months
+// and the mismatch only showed once the official names were beside them.
+const EC_ITEMS = (collection, id) =>
+  `https://api.weather.gc.ca/collections/${collection}/items?STATION_NUMBER=${id}&limit=10`;
+
+function officialNames(locations) {
+  return new Map((locations || []).map(l => [l.id, l.name]));
+}
+
+function stationList(stations, locations, collection) {
+  const names = officialNames(locations);
+  return stations.map(st => {
+    const official = names.get(st.id);
+    return `<a href="${EC_ITEMS(collection, st.id)}">${esc(st.id)}</a> ${esc(st.name)}`
+      + (official ? ` <span class="official">${esc(official)}</span>` : '')
+      + ` &middot; ${escDate(st.firstDate)} – ${escDate(st.lastDate)}, ${st.n.toLocaleString('en-CA')} days`;
+  }).join('<br>');
+}
+
+const SRC = {
+  gauges: (stations, locations, measure) => `<strong>${measure === 'flow' ? 'River flow' : 'Water level'}</strong> —
+    Environment and Climate Change Canada, Water Survey of Canada gauges via the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean">MSC GeoMet hydrometric daily-mean</a> and
+    <a href="https://api.weather.gc.ca/collections/hydrometric-realtime">realtime</a> collections.
+    Daily means are the published record; realtime readings, averaged to a day, fill the months the daily means have not yet reached.<br>
+    ${stationList(stations, locations, 'hydrometric-daily-mean')}`,
+  temperature: (meta) => `<strong>Water temperature</strong> —
+    NASA JPL <a href="https://podaac.jpl.nasa.gov/dataset/MUR-JPL-L4-GLOB-v4.1">MUR SST v4.1</a>, a 0.01° global sea-surface temperature analysis, read at 45.01° N, 79.60° W in Bala Bay through NOAA's
+    <a href="https://coastwatch.pfeg.noaa.gov/erddap/info/jplMURSST41/index.html">ERDDAP</a> servers.
+    It is a satellite analysis of the surface, not a thermometer in the water, treats the lake as open sea, and lags by a few days.
+    ${escDate(meta.firstDate)} – ${escDate(meta.lastDate)}, ${meta.records.toLocaleString('en-CA')} daily readings.`,
+  peaks: () => `<strong>Annual crests</strong> — the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-annual-peaks">hydrometric annual-peaks</a> collection: the highest instantaneous reading Environment Canada recorded in each year.`,
+  derived: (what) => `<strong>Derived figures</strong> — ${what} are computed by this site from the series above; the formulas are in the explainers on the page.`,
+  map: () => `<strong>Map</strong> — gauge positions from the <a href="https://api.weather.gc.ca/collections/hydrometric-stations">hydrometric-stations</a> collection; tiles © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.`,
+  regulation: () => `<strong>Lake regulation</strong> — Lake Muskoka's level is set by dams at Bala and Port Carling under Ontario's Muskoka River Water Management Plan. Nothing here is adjusted for that; these are the gauge readings as published.`,
+};
 
 // ── the map ──
 // Only rendered when notify.mjs has cached coordinates for at least one of the
@@ -259,7 +305,7 @@ function headline(o) {
   return parts.join(' ');
 }
 
-function indexPage(o, temp) {
+function indexPage(o, temp, levels, flow, locations) {
   const lvl = o.level;
   const t = o.temp;
   const year = parseInt(o.meta.generated.substring(0, 4), 10);
@@ -340,6 +386,12 @@ Muskoka.getJSON('data/overview.json').then(function (o) {
     heading: 'Today on the lake',
     sub: `Level, temperature and flow as of the most recent reading from each source.`,
     body, script,
+    sources: [
+      SRC.gauges(levels.stations.filter(st => st.id === STATION), locations, 'level'),
+      SRC.temperature(temp.meta),
+      SRC.gauges(flow.stations.slice(0, 1), locations, 'flow'),
+      SRC.derived('The July average, "normal for the date", percentiles, swim days and the seven-day outlook'),
+    ],
   });
 }
 
@@ -461,6 +513,10 @@ Muskoka.toggleGroup(document.getElementById('ch-clim-toggles'), draw);`;
     heading: 'Water temperature',
     sub: `${t.meta.records.toLocaleString('en-CA')} daily satellite readings, ${escDate(t.meta.firstDate)} to ${escDate(t.meta.lastDate)}.`,
     body, script,
+    sources: [
+      SRC.temperature(t.meta),
+      SRC.derived('The ranking, percentile, bands, anomaly, yearly means, swim days and the seven-day outlook'),
+    ],
   });
 }
 
@@ -518,7 +574,12 @@ function stationPage({ file, title, heading, sub, payload, comparison, note, mea
         `${sw(['#2D6A9F', '#E07B4C', '#5BA88A', '#C0392B', '#7B5EA7'][i % 5])}${esc(s.name)}`).join(' '),
     })}
     ${measure === 'flow' ? explain('Why these gauges cannot share a raw axis', `
-      <p>These rivers drain catchments of very different size, so plotting raw discharge together mostly ranks catchment area. Port Carling peaks near 177 m³/s while Baysville peaks near 56 — the gap between them says more about geography than about conditions.</p>
+      <p>These rivers drain catchments of very different size, so plotting raw discharge together mostly ranks catchment area. ${(() => {
+        const byMax = [...payload.stations].filter(x => x.dist && x.dist.max !== null).sort((a, b) => b.dist.max - a.dist.max);
+        if (byMax.length < 2) return '';
+        const hi = byMax[0], lo = byMax[byMax.length - 1];
+        return `${esc(hi.name)}'s record daily mean is ${hi.dist.max.toFixed(0)} m³/s while ${esc(lo.name)}'s is ${lo.dist.max.toFixed(0)} — the gap between them says more about geography than about conditions.`;
+      })()}</p>
       <code class="formula">value = flow ÷ that gauge's 5-year July mean × 100</code>
       <p>Dividing by each gauge's own July average removes the size difference and leaves what is comparable: how hard each river is running relative to its own normal. 100% is a typical July day.</p>`)
     : explain('Why these gauges cannot share a raw axis', `
@@ -571,6 +632,12 @@ Muskoka.getJSON('data/${file.replace('.html', '')}.json').then(function (d) {
     body: `${note}${map}<div class="cards">${cards}</div>\n  <div class="section">${charts}</div>${managedNote}${cmp}`,
     script: script + '\n' + mapScript('map-' + measure, mapRows.map(r => ({ ...r, href: '#card-' + r.id }))),
     map: mapRows.length > 0,
+    sources: [
+      SRC.gauges(payload.stations, locations, measure),
+      ...(measure === 'level' ? [SRC.regulation()] : []),
+      SRC.derived('The July average, "normal for the date", percentiles and the normalised comparison'),
+      ...(mapRows.length ? [SRC.map()] : []),
+    ],
   });
 }
 
@@ -580,7 +647,7 @@ function fmtChange(c, decimals) {
   return `${v > 0 ? '+' : ''}${v.toFixed(decimals)}`;
 }
 
-function recordsPage(r) {
+function recordsPage(r, temp, locations) {
   const t = r.temperature;
   const fmtV = (v, d) => v === null || v === undefined ? '—' : v.toFixed(d);
   const cov = (g) => `${g.firstDate.substring(0, 4)}–${g.lastDate.substring(0, 4)}`;
@@ -738,6 +805,13 @@ function recordsPage(r) {
     heading: 'Records',
     sub: `Extremes across every gauge, from ${escDate(r.flow.concat(r.levels).map(g => g.firstDate).sort()[0])} to today.`,
     body, script: '',
+    sources: [
+      SRC.gauges(r.levels, locations, 'level'),
+      SRC.gauges(r.flow, locations, 'flow'),
+      SRC.peaks(),
+      SRC.temperature(temp.meta),
+      SRC.derived('Record highs and lows, swings, streaks and "on this date"'),
+    ],
   });
 }
 
@@ -748,7 +822,7 @@ function aboutPage(temp, levels, flow, locations) {
   const body = `
   <div class="card">
     <h2>Where the numbers come from</h2>
-    <p class="lede"><strong>Water level and river flow</strong> come from Environment and Climate Change Canada's MSC GeoMet API — the same public gauge network as the Water Office. Bala is station 02EB015. Readings are daily means, backfilled with sub-daily realtime values for days the daily-mean series has not published yet.</p>
+    <p class="lede"><strong>Water level and river flow</strong> come from Environment and Climate Change Canada's MSC GeoMet API — the same public gauge network as the Water Office. Every gauge is listed by station number under "Sources" below. Readings are daily means, backfilled with sub-daily realtime values for days the daily-mean series has not published yet.</p>
     <p class="lede"><strong>Water temperature</strong> comes from NOAA's MUR SST v4.1 satellite analysis, sampled at ${'45.01'}° N, ${'79.6'}° W. It is a surface analysis of a 0.01° cell, not a thermometer in the water, and it lags real time by two to three days. Every temperature on this site is labelled with the date it was actually measured.</p>
   </div>
 
@@ -791,6 +865,14 @@ function aboutPage(temp, levels, flow, locations) {
     file: 'about.html', title: 'Muskoka Tracker — about the data',
     heading: 'About the data', sub: 'Sources, update cadence, and what the numbers mean.',
     body, script: mapScript('map-about', rows), map: rows.length > 0,
+    sources: [
+      SRC.gauges(levels.stations, locations, 'level'),
+      SRC.gauges(flow.stations, locations, 'flow'),
+      SRC.peaks(),
+      SRC.temperature(temp.meta),
+      SRC.regulation(),
+      ...(rows.length ? [SRC.map()] : []),
+    ],
   });
 }
 
@@ -835,7 +917,7 @@ async function main() {
   await writeJSON('records.json', records);
 
   const pages = {
-    'index.html': indexPage(overview, temp),
+    'index.html': indexPage(overview, temp, levels, flow, locations),
     'temperature.html': temperaturePage(temp),
     'levels.html': stationPage({
       file: 'levels.html', title: 'Muskoka Tracker — water levels',
@@ -850,7 +932,7 @@ async function main() {
       note: flow.omitted.length ? `<div class="notice">${flow.omitted.map(g =>
         `Gauge ${esc(g.id)} (${esc(g.name)}) is not shown: it stopped reporting after ${escDate(g.lastDate)}.`).join(' ')}</div>` : '',
     }),
-    'records.html': recordsPage(records),
+    'records.html': recordsPage(records, temp, locations),
     'about.html': aboutPage(temp, levels, flow, locations),
   };
 

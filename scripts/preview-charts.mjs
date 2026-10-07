@@ -23,9 +23,9 @@ const STATIONS = [
 ];
 
 const FLOWS = [
-  { id: '02EB013', name: 'Bracebridge', label: 'Muskoka River' },
+  { id: '02EB013', name: 'Huntsville', label: 'Big East River' },
   { id: '02EB004', name: 'Port Sydney', label: 'N. Branch Muskoka R.' },
-  { id: '02EB011', name: 'Port Carling', label: 'Indian River' },
+  { id: '02EB011', name: 'Moon River', label: 'Lake Muskoka outflow, Hwy 400' },
 ];
 
 const cache = JSON.parse(await fs.readFile(here + '../data/level-history.json', 'utf8'));

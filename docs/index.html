@@ -32,7 +32,7 @@
   <p style="margin:0 0 18px;color:var(--muted);font-size:13px;">Level, temperature and flow as of the most recent reading from each source.</p>
 
   
-  <p class="headline">Lake Muskoka at Bala is <strong>5.9 inches below</strong> its July average and 0.6 inches below normal for early October, in the lowest third of readings on record. It has fallen 3.3 inches over the past month. The water is <strong>17.0 °C</strong>, about typical for this time of year and has typically cooled another 1.5 °C by this time next week. Rivers are running low: Bracebridge is at 22% of its July flow.</p>
+  <p class="headline">Lake Muskoka at Bala is <strong>5.9 inches below</strong> its July average and 0.6 inches below normal for early October, in the lowest third of readings on record. It has fallen 3.3 inches over the past month. The water is <strong>17.0 °C</strong>, about typical for this time of year and has typically cooled another 1.5 °C by this time next week. Rivers are running low: Huntsville is at 22% of its July flow.</p>
   
   <div class="section hero">
     <h2>Bala water level &middot; 2026 against 23 years</h2>
@@ -66,13 +66,35 @@
       </a><a class="card" href="flow.html">
       <h2>River flow</h2>
       <div class="big num">1.6<span class="unit"> m³/s</span></div>
-      <div class="asof">Bracebridge &middot; Oct 6, 2026</div>
+      <div class="asof">Huntsville &middot; Oct 6, 2026</div>
       <p class="lede">22% of its July average &middot; 4th percentile on record</p>
       </a></div>
+  <section class="sources">
+    <h2>Sources for this page</h2>
+    <ul>
+      <li><strong>Water level</strong> —
+    Environment and Climate Change Canada, Water Survey of Canada gauges via the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean">MSC GeoMet hydrometric daily-mean</a> and
+    <a href="https://api.weather.gc.ca/collections/hydrometric-realtime">realtime</a> collections.
+    Daily means are the published record; realtime readings, averaged to a day, fill the months the daily means have not yet reached.<br>
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB015&limit=10">02EB015</a> Bala <span class="official">BALA BAY AT BALA</span> &middot; Jan 1, 2003 – Oct 6, 2026, 8,494 days</li>
+      <li><strong>Water temperature</strong> —
+    NASA JPL <a href="https://podaac.jpl.nasa.gov/dataset/MUR-JPL-L4-GLOB-v4.1">MUR SST v4.1</a>, a 0.01° global sea-surface temperature analysis, read at 45.01° N, 79.60° W in Bala Bay through NOAA's
+    <a href="https://coastwatch.pfeg.noaa.gov/erddap/info/jplMURSST41/index.html">ERDDAP</a> servers.
+    It is a satellite analysis of the surface, not a thermometer in the water, treats the lake as open sea, and lags by a few days.
+    Jun 1, 2002 – Oct 3, 2026, 8,889 daily readings.</li>
+      <li><strong>River flow</strong> —
+    Environment and Climate Change Canada, Water Survey of Canada gauges via the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean">MSC GeoMet hydrometric daily-mean</a> and
+    <a href="https://api.weather.gc.ca/collections/hydrometric-realtime">realtime</a> collections.
+    Daily means are the published record; realtime readings, averaged to a day, fill the months the daily means have not yet reached.<br>
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB013&limit=10">02EB013</a> Huntsville <span class="official">BIG EAST RIVER NEAR HUNTSVILLE</span> &middot; Jun 22, 1973 – Oct 6, 2026, 18,943 days</li>
+      <li><strong>Derived figures</strong> — The July average, "normal for the date", percentiles, swim days and the seven-day outlook are computed by this site from the series above; the formulas are in the explainers on the page.</li>
+    </ul>
+  </section>
   <footer class="site">
-    Gauge data: Environment and Climate Change Canada, MSC GeoMet (station 02EB015 and neighbours).
-    Water temperature: NOAA MUR SST v4.1 satellite analysis.<br>
     Rebuilt automatically each morning. Generated 2026-10-06.
+    Full detail on every source is on the <a href="about.html">about page</a>.
   </footer>
 </main>
 <script src="assets/chart.umd.js"></script>

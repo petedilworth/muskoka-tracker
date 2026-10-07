@@ -33,7 +33,7 @@
 
   <div class="card">
     <h2>Where the numbers come from</h2>
-    <p class="lede"><strong>Water level and river flow</strong> come from Environment and Climate Change Canada's MSC GeoMet API — the same public gauge network as the Water Office. Bala is station 02EB015. Readings are daily means, backfilled with sub-daily realtime values for days the daily-mean series has not published yet.</p>
+    <p class="lede"><strong>Water level and river flow</strong> come from Environment and Climate Change Canada's MSC GeoMet API — the same public gauge network as the Water Office. Every gauge is listed by station number under "Sources" below. Readings are daily means, backfilled with sub-daily realtime values for days the daily-mean series has not published yet.</p>
     <p class="lede"><strong>Water temperature</strong> comes from NOAA's MUR SST v4.1 satellite analysis, sampled at 45.01° N, 79.6° W. It is a surface analysis of a 0.01° cell, not a thermometer in the water, and it lags real time by two to three days. Every temperature on this site is labelled with the date it was actually measured.</p>
   </div>
 
@@ -66,23 +66,48 @@
     <tr><td>Level · Port Carling</td><td class="n">Nov 1, 2002 – Oct 6, 2026</td><td class="n">8109</td></tr>
     <tr><td>Level · Port Sydney</td><td class="n">Jan 1, 2002 – Oct 6, 2026</td><td class="n">8382</td></tr>
     <tr><td>Level · Baysville</td><td class="n">Oct 23, 2002 – Oct 6, 2026</td><td class="n">8184</td></tr>
-    <tr><td>Flow · Bracebridge</td><td class="n">Jun 22, 1973 – Oct 6, 2026</td><td class="n">18943</td></tr>
+    <tr><td>Flow · Huntsville</td><td class="n">Jun 22, 1973 – Oct 6, 2026</td><td class="n">18943</td></tr>
     <tr><td>Flow · Port Sydney</td><td class="n">Jun 16, 1915 – Oct 6, 2026</td><td class="n">40045</td></tr>
     <tr><td>Flow · Baysville</td><td class="n">Aug 15, 1941 – Oct 6, 2026</td><td class="n">27848</td></tr>
-    <tr><td>Flow · Port Carling</td><td class="n">May 5, 1965 – Oct 6, 2026</td><td class="n">21813</td></tr>
+    <tr><td>Flow · Moon River</td><td class="n">May 5, 1965 – Oct 6, 2026</td><td class="n">21813</td></tr>
   </table></div>
   </div>
+  <section class="sources">
+    <h2>Sources for this page</h2>
+    <ul>
+      <li><strong>Water level</strong> —
+    Environment and Climate Change Canada, Water Survey of Canada gauges via the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean">MSC GeoMet hydrometric daily-mean</a> and
+    <a href="https://api.weather.gc.ca/collections/hydrometric-realtime">realtime</a> collections.
+    Daily means are the published record; realtime readings, averaged to a day, fill the months the daily means have not yet reached.<br>
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB015&limit=10">02EB015</a> Bala <span class="official">BALA BAY AT BALA</span> &middot; Jan 1, 2003 – Oct 6, 2026, 8,494 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB018&limit=10">02EB018</a> Beaumaris <span class="official">LAKE MUSKOKA AT BEAUMARIS</span> &middot; Nov 1, 2002 – Oct 6, 2026, 8,175 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB020&limit=10">02EB020</a> Port Carling <span class="official">LAKE ROSSEAU AT PORT CARLING</span> &middot; Nov 1, 2002 – Oct 6, 2026, 8,109 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB004&limit=10">02EB004</a> Port Sydney <span class="official">NORTH BRANCH MUSKOKA RIVER AT PORT SYDNEY</span> &middot; Jan 1, 2002 – Oct 6, 2026, 8,382 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB008&limit=10">02EB008</a> Baysville <span class="official">SOUTH BRANCH MUSKOKA RIVER AT BAYSVILLE</span> &middot; Oct 23, 2002 – Oct 6, 2026, 8,184 days</li>
+      <li><strong>River flow</strong> —
+    Environment and Climate Change Canada, Water Survey of Canada gauges via the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean">MSC GeoMet hydrometric daily-mean</a> and
+    <a href="https://api.weather.gc.ca/collections/hydrometric-realtime">realtime</a> collections.
+    Daily means are the published record; realtime readings, averaged to a day, fill the months the daily means have not yet reached.<br>
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB013&limit=10">02EB013</a> Huntsville <span class="official">BIG EAST RIVER NEAR HUNTSVILLE</span> &middot; Jun 22, 1973 – Oct 6, 2026, 18,943 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB004&limit=10">02EB004</a> Port Sydney <span class="official">NORTH BRANCH MUSKOKA RIVER AT PORT SYDNEY</span> &middot; Jun 16, 1915 – Oct 6, 2026, 40,045 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB008&limit=10">02EB008</a> Baysville <span class="official">SOUTH BRANCH MUSKOKA RIVER AT BAYSVILLE</span> &middot; Aug 15, 1941 – Oct 6, 2026, 27,848 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB011&limit=10">02EB011</a> Moon River <span class="official">MOON RIVER AT HIGHWAY NO. 400</span> &middot; May 5, 1965 – Oct 6, 2026, 21,813 days</li>
+      <li><strong>Annual crests</strong> — the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-annual-peaks">hydrometric annual-peaks</a> collection: the highest instantaneous reading Environment Canada recorded in each year.</li>
+      <li><strong>Water temperature</strong> —
+    NASA JPL <a href="https://podaac.jpl.nasa.gov/dataset/MUR-JPL-L4-GLOB-v4.1">MUR SST v4.1</a>, a 0.01° global sea-surface temperature analysis, read at 45.01° N, 79.60° W in Bala Bay through NOAA's
+    <a href="https://coastwatch.pfeg.noaa.gov/erddap/info/jplMURSST41/index.html">ERDDAP</a> servers.
+    It is a satellite analysis of the surface, not a thermometer in the water, treats the lake as open sea, and lags by a few days.
+    Jun 1, 2002 – Oct 3, 2026, 8,889 daily readings.</li>
+      <li><strong>Lake regulation</strong> — Lake Muskoka's level is set by dams at Bala and Port Carling under Ontario's Muskoka River Water Management Plan. Nothing here is adjusted for that; these are the gauge readings as published.</li>
+      <li><strong>Map</strong> — gauge positions from the <a href="https://api.weather.gc.ca/collections/hydrometric-stations">hydrometric-stations</a> collection; tiles © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</li>
+    </ul>
+  </section>
   <footer class="site">
-    Gauge data: Environment and Climate Change Canada, MSC GeoMet (station 02EB015 and neighbours).
-    Water temperature: NOAA MUR SST v4.1 satellite analysis.<br>
     Rebuilt automatically each morning. Generated 2026-10-06.
+    Full detail on every source is on the <a href="about.html">about page</a>.
   </footer>
 </main>
 <script src="assets/chart.umd.js"></script>
 <script src="assets/leaflet/leaflet.js"></script>
 <script src="assets/app.js"></script>
 <script>
-Muskoka.gaugeMap(document.getElementById('map-about'), [{"id":"02EB015","name":"Bala","label":"Lake Muskoka","measure":"level","lat":45.01314163208008,"lon":-79.61353302001953,"reading":"225.191 m · Oct 6, 2026","href":"levels.html#card-02EB015"},{"id":"02EB018","name":"Beaumaris","label":"Lake Muskoka","measure":"level","lat":45.07041931152344,"lon":-79.49382781982422,"reading":"9.330 m · Oct 6, 2026","href":"levels.html#card-02EB018"},{"id":"02EB020","name":"Port Carling","label":"Lake Rosseau","measure":"level","lat":45.120079040527344,"lon":-79.57649993896484,"reading":"8.793 m · Oct 6, 2026","href":"levels.html#card-02EB020"},{"id":"02EB004","name":"Port Sydney","label":"N. Branch Muskoka R.","measure":"level","lat":45.21286010742188,"lon":-79.27528381347656,"reading":"0.754 m · Oct 6, 2026","href":"levels.html#card-02EB004"},{"id":"02EB008","name":"Baysville","label":"S. Branch Muskoka R.","measure":"level","lat":45.14796829223633,"lon":-79.1135025024414,"reading":"7.556 m · Oct 6, 2026","href":"levels.html#card-02EB008"},{"id":"02EB013","name":"Bracebridge","label":"Muskoka River","measure":"flow","lat":45.39271926879883,"lon":-79.15994262695312,"reading":"1.6 m³/s · Oct 6, 2026","href":"flow.html#card-02EB013"},{"id":"02EB004","name":"Port Sydney","label":"N. Branch Muskoka R.","measure":"flow","lat":45.21286010742188,"lon":-79.27528381347656,"reading":"7.1 m³/s · Oct 6, 2026","href":"flow.html#card-02EB004"},{"id":"02EB008","name":"Baysville","label":"S. Branch Muskoka R.","measure":"flow","lat":45.14796829223633,"lon":-79.1135025024414,"reading":"8.5 m³/s · Oct 6, 2026","href":"flow.html#card-02EB008"},{"id":"02EB011","name":"Port Carling","label":"Indian River","measure":"flow","lat":45.065059661865234,"lon":-79.7901382446289,"reading":"0.5 m³/s · Oct 6, 2026","href":"flow.html#card-02EB011"}]);
+Muskoka.gaugeMap(document.getElementById('map-about'), [{"id":"02EB015","name":"Bala","label":"Lake Muskoka","measure":"level","lat":45.01314163208008,"lon":-79.61353302001953,"reading":"225.191 m · Oct 6, 2026","href":"levels.html#card-02EB015"},{"id":"02EB018","name":"Beaumaris","label":"Lake Muskoka","measure":"level","lat":45.07041931152344,"lon":-79.49382781982422,"reading":"9.330 m · Oct 6, 2026","href":"levels.html#card-02EB018"},{"id":"02EB020","name":"Port Carling","label":"Lake Rosseau","measure":"level","lat":45.120079040527344,"lon":-79.57649993896484,"reading":"8.793 m · Oct 6, 2026","href":"levels.html#card-02EB020"},{"id":"02EB004","name":"Port Sydney","label":"N. Branch Muskoka R.","measure":"level","lat":45.21286010742188,"lon":-79.27528381347656,"reading":"0.754 m · Oct 6, 2026","href":"levels.html#card-02EB004"},{"id":"02EB008","name":"Baysville","label":"S. Branch Muskoka R.","measure":"level","lat":45.14796829223633,"lon":-79.1135025024414,"reading":"7.556 m · Oct 6, 2026","href":"levels.html#card-02EB008"},{"id":"02EB013","name":"Huntsville","label":"Big East River","measure":"flow","lat":45.39271926879883,"lon":-79.15994262695312,"reading":"1.6 m³/s · Oct 6, 2026","href":"flow.html#card-02EB013"},{"id":"02EB004","name":"Port Sydney","label":"N. Branch Muskoka R.","measure":"flow","lat":45.21286010742188,"lon":-79.27528381347656,"reading":"7.1 m³/s · Oct 6, 2026","href":"flow.html#card-02EB004"},{"id":"02EB008","name":"Baysville","label":"S. Branch Muskoka R.","measure":"flow","lat":45.14796829223633,"lon":-79.1135025024414,"reading":"8.5 m³/s · Oct 6, 2026","href":"flow.html#card-02EB008"},{"id":"02EB011","name":"Moon River","label":"Lake Muskoka outflow, Hwy 400","measure":"flow","lat":45.065059661865234,"lon":-79.7901382446289,"reading":"0.5 m³/s · Oct 6, 2026","href":"flow.html#card-02EB011"}]);
 </script>
 </body>
 </html>

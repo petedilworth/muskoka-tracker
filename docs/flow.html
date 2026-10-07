@@ -35,7 +35,7 @@
     <div class="map-box" id="map-flow"></div>
     <div class="legend"><span class="swatch dot" style="background:#2D6A9F"></span>Level gauge <span class="swatch dot" style="background:#5BA88A"></span>Flow gauge &middot; map tiles © OpenStreetMap contributors</div>
   </div><div class="cards"><div class="card">
-      <h2 id="card-02EB013">Bracebridge &middot; Muskoka River</h2>
+      <h2 id="card-02EB013">Huntsville &middot; Big East River</h2>
       <div class="big num">1.6<span class="unit">m³/s</span></div>
       <div class="asof">Oct 6, 2026 &middot; 22% of the July average</div>
       <p class="lede">4th percentile of all 18,943 readings on record (1973–2026)</p>
@@ -83,7 +83,7 @@
       <div class="dist" id="dist-02EB008"></div>
     </div>
     <div class="card">
-      <h2 id="card-02EB011">Port Carling &middot; Indian River</h2>
+      <h2 id="card-02EB011">Moon River &middot; Lake Muskoka outflow, Hwy 400</h2>
       <div class="big num">0.5<span class="unit">m³/s</span></div>
       <div class="asof">Oct 6, 2026 &middot; 3% of the July average</div>
       <p class="lede">2nd percentile of all 21,813 readings on record (1965–2026)</p>
@@ -101,7 +101,7 @@
   <div class="section"><div class="chart-card">
     <div class="chart-head">
       <div>
-        <div class="chart-title">Bracebridge — Muskoka River</div>
+        <div class="chart-title">Huntsville — Big East River</div>
         <div class="chart-sub">18,943 readings, Jun 22, 1973 to Oct 6, 2026</div>
       </div>
       <div class="toggles" id="ch-02EB013-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="season" aria-pressed="false">Season</button><button type="button" data-value="9999" aria-pressed="false">All 53y</button></div>
@@ -134,7 +134,7 @@
     <div class="chart-card">
     <div class="chart-head">
       <div>
-        <div class="chart-title">Port Carling — Indian River</div>
+        <div class="chart-title">Moon River — Lake Muskoka outflow, Hwy 400</div>
         <div class="chart-sub">21,813 readings, May 5, 1965 to Oct 6, 2026</div>
       </div>
       <div class="toggles" id="ch-02EB011-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button><button type="button" data-value="season" aria-pressed="false">Season</button><button type="button" data-value="9999" aria-pressed="false">All 61y</button></div>
@@ -146,7 +146,7 @@
       <p>Two comparisons sit on each card and they answer different questions. <strong>Vs July average</strong> compares against the mean of every July day in the last five years: a fixed summer benchmark, useful for "is the lake up or down for the season". <strong>Vs normal for the date</strong> compares against what this gauge has actually done on this calendar date across its whole record.</p>
       <code class="formula">normal(date) = median of readings from date−3 … date+3, every year except this one</code>
       <p>The second is the one that stays meaningful in February, when comparing to July says little. The shaded bands on the charts are that same calculation drawn across the whole window: the darker band is the middle half of past years, the lighter one the full recorded range, and the dashed line the median.</p>
-      <p>A normal needs depth to mean anything, so it is only shown for gauges with at least three prior years, and every card states how many years its normal rests on. Bracebridge's rests on 52.</p></div></details></div>
+      <p>A normal needs depth to mean anything, so it is only shown for gauges with at least three prior years, and every card states how many years its normal rests on. Huntsville's rests on 52.</p></div></details></div>
   <div class="section">
     <h2>All gauges compared</h2>
     <div class="chart-card">
@@ -158,17 +158,29 @@
       <div class="toggles" id="ch-cmp-toggles"><button type="button" data-value="90" aria-pressed="true">90 days</button><button type="button" data-value="365" aria-pressed="false">1 year</button><button type="button" data-value="730" aria-pressed="false">2 years</button></div>
     </div>
     <div class="chart-box"><canvas id="ch-cmp"></canvas></div>
-    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Bracebridge <span class="swatch " style="background:#E07B4C"></span>Port Sydney <span class="swatch " style="background:#5BA88A"></span>Baysville <span class="swatch " style="background:#C0392B"></span>Port Carling</div>
+    <div class="legend"><span class="swatch " style="background:#2D6A9F"></span>Huntsville <span class="swatch " style="background:#E07B4C"></span>Port Sydney <span class="swatch " style="background:#5BA88A"></span>Baysville <span class="swatch " style="background:#C0392B"></span>Moon River</div>
   </div>
     <details class="explain"><summary>Why these gauges cannot share a raw axis</summary><div class="body">
-      <p>These rivers drain catchments of very different size, so plotting raw discharge together mostly ranks catchment area. Port Carling peaks near 177 m³/s while Baysville peaks near 56 — the gap between them says more about geography than about conditions.</p>
+      <p>These rivers drain catchments of very different size, so plotting raw discharge together mostly ranks catchment area. Moon River's record daily mean is 342 m³/s while Baysville's is 165 — the gap between them says more about geography than about conditions.</p>
       <code class="formula">value = flow ÷ that gauge's 5-year July mean × 100</code>
       <p>Dividing by each gauge's own July average removes the size difference and leaves what is comparable: how hard each river is running relative to its own normal. 100% is a typical July day.</p></div></details>
   </div>
+  <section class="sources">
+    <h2>Sources for this page</h2>
+    <ul>
+      <li><strong>River flow</strong> —
+    Environment and Climate Change Canada, Water Survey of Canada gauges via the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean">MSC GeoMet hydrometric daily-mean</a> and
+    <a href="https://api.weather.gc.ca/collections/hydrometric-realtime">realtime</a> collections.
+    Daily means are the published record; realtime readings, averaged to a day, fill the months the daily means have not yet reached.<br>
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB013&limit=10">02EB013</a> Huntsville <span class="official">BIG EAST RIVER NEAR HUNTSVILLE</span> &middot; Jun 22, 1973 – Oct 6, 2026, 18,943 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB004&limit=10">02EB004</a> Port Sydney <span class="official">NORTH BRANCH MUSKOKA RIVER AT PORT SYDNEY</span> &middot; Jun 16, 1915 – Oct 6, 2026, 40,045 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB008&limit=10">02EB008</a> Baysville <span class="official">SOUTH BRANCH MUSKOKA RIVER AT BAYSVILLE</span> &middot; Aug 15, 1941 – Oct 6, 2026, 27,848 days<br><a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB011&limit=10">02EB011</a> Moon River <span class="official">MOON RIVER AT HIGHWAY NO. 400</span> &middot; May 5, 1965 – Oct 6, 2026, 21,813 days</li>
+      <li><strong>Derived figures</strong> — The July average, "normal for the date", percentiles and the normalised comparison are computed by this site from the series above; the formulas are in the explainers on the page.</li>
+      <li><strong>Map</strong> — gauge positions from the <a href="https://api.weather.gc.ca/collections/hydrometric-stations">hydrometric-stations</a> collection; tiles © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.</li>
+    </ul>
+  </section>
   <footer class="site">
-    Gauge data: Environment and Climate Change Canada, MSC GeoMet (station 02EB015 and neighbours).
-    Water temperature: NOAA MUR SST v4.1 satellite analysis.<br>
     Rebuilt automatically each morning. Generated 2026-10-06.
+    Full detail on every source is on the <a href="about.html">about page</a>.
   </footer>
 </main>
 <script src="assets/chart.umd.js"></script>
@@ -206,7 +218,7 @@ Muskoka.getJSON('data/flow.json').then(function (d) {
     Muskoka.toggleGroup(document.getElementById('ch-cmp-toggles'), drawCmp);
   }
 });
-Muskoka.gaugeMap(document.getElementById('map-flow'), [{"id":"02EB013","name":"Bracebridge","label":"Muskoka River","measure":"flow","lat":45.39271926879883,"lon":-79.15994262695312,"reading":"1.6 m³/s · Oct 6, 2026","href":"#card-02EB013"},{"id":"02EB004","name":"Port Sydney","label":"N. Branch Muskoka R.","measure":"flow","lat":45.21286010742188,"lon":-79.27528381347656,"reading":"7.1 m³/s · Oct 6, 2026","href":"#card-02EB004"},{"id":"02EB008","name":"Baysville","label":"S. Branch Muskoka R.","measure":"flow","lat":45.14796829223633,"lon":-79.1135025024414,"reading":"8.5 m³/s · Oct 6, 2026","href":"#card-02EB008"},{"id":"02EB011","name":"Port Carling","label":"Indian River","measure":"flow","lat":45.065059661865234,"lon":-79.7901382446289,"reading":"0.5 m³/s · Oct 6, 2026","href":"#card-02EB011"}]);
+Muskoka.gaugeMap(document.getElementById('map-flow'), [{"id":"02EB013","name":"Huntsville","label":"Big East River","measure":"flow","lat":45.39271926879883,"lon":-79.15994262695312,"reading":"1.6 m³/s · Oct 6, 2026","href":"#card-02EB013"},{"id":"02EB004","name":"Port Sydney","label":"N. Branch Muskoka R.","measure":"flow","lat":45.21286010742188,"lon":-79.27528381347656,"reading":"7.1 m³/s · Oct 6, 2026","href":"#card-02EB004"},{"id":"02EB008","name":"Baysville","label":"S. Branch Muskoka R.","measure":"flow","lat":45.14796829223633,"lon":-79.1135025024414,"reading":"8.5 m³/s · Oct 6, 2026","href":"#card-02EB008"},{"id":"02EB011","name":"Moon River","label":"Lake Muskoka outflow, Hwy 400","measure":"flow","lat":45.065059661865234,"lon":-79.7901382446289,"reading":"0.5 m³/s · Oct 6, 2026","href":"#card-02EB011"}]);
 </script>
 </body>
 </html>
