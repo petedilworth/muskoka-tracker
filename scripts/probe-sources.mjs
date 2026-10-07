@@ -519,6 +519,86 @@ async function probeEnvironmentCanada() {
 }
 
 
+
+// ── Every Water Survey of Canada gauge in the Muskoka basin ──
+//
+// Two flow gauges carried the wrong town's name for months, and the home page
+// ended up showing Huntsville because the first gauge in the list is dead. The
+// cure is an inventory rather than another guess: ask the station collection
+// for everything inside a box around the three lakes, Bracebridge, Port Carling
+// and Bala, and print what Environment Canada says each one is — number, name,
+// status, whether it reports in real time, drainage area — then confirm every
+// "active" gauge by asking the realtime collection whether data is actually
+// arriving. Names a Bala resident would look for are flagged.
+const BASIN_BBOX = '-80.0,44.85,-78.85,45.65';
+const BALA = { lat: 45.0131, lon: -79.6135 };
+const WANTED = /BRACEBRIDGE|PORT CARLING|INDIAN RIVER|BALA|MUSQUASH|MOON RIVER|LAKE MUSKOKA|ROSSEAU|JOSEPH/i;
+
+function kmFromBala(lat, lon) {
+  const R = 6371, toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(lat - BALA.lat), dLon = toRad(lon - BALA.lon);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(BALA.lat)) * Math.cos(toRad(lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+async function probeBasinInventory() {
+  head('Water Survey of Canada — every gauge in the Muskoka basin');
+  const url = `${EC_BASE}/hydrometric-stations/items?f=json&bbox=${BASIN_BBOX}&limit=500`;
+  const r = await get(url, { timeout: 30000 });
+  if (!r.ok) { console.log(`  stations in bbox: ${bad(`HTTP ${r.status || r.error}`)}`); return; }
+  let feats;
+  try { feats = JSON.parse(r.text).features || []; } catch (e) { console.log(`  unparseable: ${e.message}`); return; }
+  console.log(`  ${feats.length} stations inside ${BASIN_BBOX}`);
+  if (feats[0]) console.log(dim(`    properties: ${Object.keys(feats[0].properties || {}).join(', ')}`));
+
+  const rows = feats.map(f => {
+    const p = f.properties || {};
+    const c = f.geometry?.coordinates || [];
+    return {
+      id: p.STATION_NUMBER || f.id, name: p.STATION_NAME || '?',
+      status: p.STATUS_EN || '?', realtime: p.REAL_TIME, area: p.DRAINAGE_AREA_GROSS,
+      lat: c[1], lon: c[0],
+      km: (Number.isFinite(c[0]) && Number.isFinite(c[1])) ? kmFromBala(c[1], c[0]) : null,
+    };
+  }).sort((a, b) => (a.km ?? 1e9) - (b.km ?? 1e9));
+
+  console.log('  number    km  status        rt   area km²  name');
+  for (const s of rows) {
+    const flag = WANTED.test(s.name) ? ok(' ◀') : '';
+    const line = `  ${s.id.padEnd(8)} ${s.km === null ? '   ?' : String(Math.round(s.km)).padStart(4)}  ${String(s.status).padEnd(13)} ${String(s.realtime ?? '?').padEnd(4)} ${String(s.area ?? '').padStart(9)}  ${s.name}${flag}`;
+    console.log(/active/i.test(s.status) ? line : dim(line));
+  }
+
+  // "Active" is a flag; data arriving is a fact. Ask the realtime collection
+  // for each active gauge — how many readings it holds and the newest one.
+  const active = rows.filter(s => /active/i.test(s.status));
+  console.log(`\n  realtime check on the ${active.length} active gauges:`);
+  for (const s of active) {
+    const rr = await get(`${EC_BASE}/hydrometric-realtime/items?f=json&STATION_NUMBER=${s.id}&limit=1&sortby=-DATETIME`, { timeout: 20000 });
+    let note = bad(`HTTP ${rr.status || rr.error}`);
+    if (rr.ok) {
+      try {
+        const j = JSON.parse(rr.text);
+        const f = (j.features || [])[0];
+        const p = f ? f.properties || {} : {};
+        const has = ['LEVEL', 'DISCHARGE'].filter(k => p[k] !== null && p[k] !== undefined);
+        note = f
+          ? `${ok(String(j.numberMatched ?? '?').padStart(5) + ' readings')}, newest ${String(p.DATETIME || '?').slice(0, 16)}, carries ${has.join(' + ') || 'neither LEVEL nor DISCHARGE'}`
+          : bad('no realtime readings at all');
+      } catch (e) { note = dim('unparseable'); }
+    }
+    console.log(`    ${s.id}  ${s.name.padEnd(46).slice(0, 46)}  ${note}`);
+    await pause(250);
+  }
+
+  const towns = ['BRACEBRIDGE', 'PORT CARLING', 'INDIAN RIVER', 'BALA', 'MUSQUASH', 'MOON RIVER'];
+  console.log('\n  by name:');
+  for (const t of towns) {
+    const hits = rows.filter(s => s.name.toUpperCase().includes(t));
+    console.log(`    ${t.padEnd(13)} ${hits.length ? hits.map(h => `${h.id} (${h.status})`).join(', ') : bad('no station carries this name')}`);
+  }
+}
+
 // ── Copernicus / ESA Lakes_cci, and local ice-out records ──
 //
 // Two questions, both unanswerable from the sandbox because every host below
@@ -663,6 +743,7 @@ async function main() {
   }
 
   await probeEnvironmentCanada();
+  await probeBasinInventory();
   await probeIceAndCopernicus();
   await probeOpg();
   await probeDataStream();

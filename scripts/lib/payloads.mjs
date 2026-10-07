@@ -677,6 +677,11 @@ export function buildRecordsPayload(temps, cache, todayIso, peakRows = []) {
   };
 }
 
+// Lake Muskoka's outflow at Bala. 02EB006 (Muskoka River below Bala) stopped
+// reporting in 2021; the Moon River gauge at Highway 400 is the live gauge on
+// the water that has just left the lake.
+export const HOME_FLOW = '02EB011';
+
 export function buildOverviewPayload(temp, levels, flow, todayIso) {
   const bala = levels.stations.find(s => s.id === STATION) ?? levels.stations[0];
   return {
@@ -703,10 +708,16 @@ export function buildOverviewPayload(temp, levels, flow, todayIso) {
       swim: temp.swim,
       ageDays: temp.meta.lagDays, years: temp.meta.years,
     },
-    flow: flow.stations.map(s => ({
-      id: s.id, name: s.name, label: s.label,
-      date: s.latest.date, value: s.latest.value, percentile: s.percentile,
-      vsJulyPct: s.vsJulyPct,
-    })),
+    // The home page takes the first of these. It used to be whatever came
+    // first in the station list, which — once the gauge below Bala went dead —
+    // was a river forty kilometres north of the lake. Name the one that
+    // matters for Bala: the Moon River, where Lake Muskoka leaves at Bala.
+    flow: [...flow.stations]
+      .sort((a, b) => (a.id === HOME_FLOW ? -1 : b.id === HOME_FLOW ? 1 : 0))
+      .map(s => ({
+        id: s.id, name: s.name, label: s.label,
+        date: s.latest.date, value: s.latest.value, percentile: s.percentile,
+        vsJulyPct: s.vsJulyPct,
+      })),
   };
 }

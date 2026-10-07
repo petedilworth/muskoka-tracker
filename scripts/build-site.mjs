@@ -14,7 +14,7 @@ import {
 import {
   loadTemps, loadLevelCache, buildTemperaturePayload, buildAllYearsPayload,
   buildLevelsPayload, buildFlowPayload, buildOverviewPayload, buildRecordsPayload,
-  loadPeaks, loadGaugeLocations,
+  loadPeaks, loadGaugeLocations, HOME_FLOW,
 } from './lib/payloads.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -299,8 +299,11 @@ function headline(o) {
     parts.push(`The water is <strong>${t.value.toFixed(1)} °C</strong>${rel}${fc}.`);
   }
   if (f && f.vsJulyPct !== null && f.vsJulyPct !== undefined) {
-    const how = f.vsJulyPct < 50 ? 'low' : f.vsJulyPct > 150 ? 'high' : 'near their summer normal';
-    parts.push(`Rivers are running ${how}: ${esc(f.name)} is at ${f.vsJulyPct}% of its July flow.`);
+    const outflow = f.id === HOME_FLOW;
+    const how = f.vsJulyPct < 50 ? 'low' : f.vsJulyPct > 150 ? 'high' : 'near its summer normal';
+    parts.push(outflow
+      ? `The lake's outflow on the ${esc(f.name)} is running ${how}, at ${f.vsJulyPct}% of its July flow.`
+      : `${esc(f.name)} is running ${how}, at ${f.vsJulyPct}% of its July flow.`);
   }
   return parts.join(' ');
 }
@@ -335,8 +338,9 @@ function indexPage(o, temp, levels, flow, locations) {
         ? `${swim.thisYear - swim.typical} more than a typical year by now`
         : swim.thisYear < swim.typical ? `${swim.typical - swim.thisYear} fewer than a typical year by now` : 'exactly a typical year so far'),
       null, 'temperature.html'),
-    o.flow.length && tile('River flow', o.flow[0].value.toFixed(1), ' m³/s',
-      `${esc(o.flow[0].name)} &middot; ${escDate(o.flow[0].date)}`,
+    o.flow.length && tile(o.flow[0].id === HOME_FLOW ? 'Lake Muskoka outflow · ' + esc(o.flow[0].name) : 'River flow · ' + esc(o.flow[0].name),
+      o.flow[0].value.toFixed(1), ' m³/s',
+      `${esc(o.flow[0].label)} &middot; ${escDate(o.flow[0].date)}`,
       o.flow[0].vsJulyPct !== null && o.flow[0].vsJulyPct !== undefined
         ? `${o.flow[0].vsJulyPct}% of its July average &middot; ${pctLine(o.flow[0].percentile, 'on record')}`
         : pctLine(o.flow[0].percentile, 'of readings on record'),
@@ -389,7 +393,7 @@ Muskoka.getJSON('data/overview.json').then(function (o) {
     sources: [
       SRC.gauges(levels.stations.filter(st => st.id === STATION), locations, 'level'),
       SRC.temperature(temp.meta),
-      SRC.gauges(flow.stations.slice(0, 1), locations, 'flow'),
+      SRC.gauges(flow.stations.filter(st => st.id === o.flow[0]?.id), locations, 'flow'),
       SRC.derived('The July average, "normal for the date", percentiles, swim days and the seven-day outlook'),
     ],
   });
