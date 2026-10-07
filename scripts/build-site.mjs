@@ -927,7 +927,7 @@ async function main() {
     }),
     'flow.html': stationPage({
       file: 'flow.html', title: 'Muskoka Tracker — river flow',
-      heading: 'River flow', sub: 'Discharge on the Muskoka and Indian rivers.',
+      heading: 'River flow', sub: 'Discharge on the Muskoka River system: the Big East River near Huntsville, the North and South Branches at Port Sydney and Baysville, and the Moon River where Lake Muskoka drains.',
       payload: flow, comparison: true, measure: 'flow', locations,
       note: flow.omitted.length ? `<div class="notice">${flow.omitted.map(g =>
         `Gauge ${esc(g.id)} (${esc(g.name)}) is not shown: it stopped reporting after ${escDate(g.lastDate)}.`).join(' ')}</div>` : '',
