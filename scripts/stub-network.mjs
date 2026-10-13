@@ -54,7 +54,7 @@ globalThis.fetch = async (input, opts = {}) => {
       // not the real gauge locations; the live run replaces them.
       const fake = { '02EB015': [-79.62, 45.01], '02EB018': [-79.58, 45.05], '02EB020': [-79.58, 45.11],
         '02EB004': [-79.28, 45.20], '02EB008': [-79.11, 45.15], '02EB006': [-79.63, 45.02],
-        '02EB013': [-79.31, 45.04], '02EB011': [-79.57, 45.10] };
+        '02EB013': [-79.31, 45.04] };
       const c = fake[stn];
       feats = c ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: c },
         properties: { STATION_NUMBER: stn, STATION_NAME: 'STUB ' + stn } }] : [];

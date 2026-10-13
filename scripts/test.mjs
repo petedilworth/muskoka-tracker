@@ -267,7 +267,7 @@ test('level reports inches, never a ratio', () => {
 test('flow gauges get a comparison series normalised to their own July mean', () => {
   const cache = {
     ...syntheticCache('flow', '02EB013', 20),
-    ...syntheticCache('flow', '02EB011', 150), // 7x the catchment
+    ...syntheticCache('flow', '02EB008', 150), // 7x the catchment
   };
   const cmp = buildFlowPayload(cache, '2026-09-10').comparison;
   assert.equal(cmp.stations.length, 2);

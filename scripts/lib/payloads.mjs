@@ -489,7 +489,7 @@ function stationBlock(st, days, { unit, format, decimals, measure }, currentYear
     // across stations.
     //
     // Flow — a ratio, not a difference. Discharge swings across orders of
-    // magnitude with the season (0.33 to 177 m³/s on the Moon River), so a
+    // magnitude with the season (a few m³/s to well over a hundred at the same gauge), so a
     // subtraction says little; and dividing m³/s by 2.54 to call it "inches",
     // as this did when the two measures shared one formula, is meaningless.
     vsJulyIn: (measure === 'level' && avg !== null)
@@ -561,8 +561,8 @@ export function buildFlowPayload(cache, todayIso) {
     }
     stations.push(stationBlock(st, days, { unit: 'm³/s', format: 'f1', decimals: 1, measure: 'flow' }, currentYear));
   }
-  // Discharge spans orders of magnitude between gauges (the Moon River peaks
-  // near 177 m³/s, Baysville near 56), so raw m³/s on one axis just ranks catchment
+  // Discharge spans orders of magnitude between gauges — the large catchments
+  // peak in the hundreds of m³/s, the small ones in the tens — so raw m³/s on one axis just ranks catchment
   // size. Percent of each gauge's own July mean is the comparable quantity.
   const withAvg = stations.filter(s => s.julyAvg !== null && s.julyAvg !== 0 && s.series.length > 0);
   const maps = withAvg.map(s => new Map(s.series));
@@ -677,11 +677,6 @@ export function buildRecordsPayload(temps, cache, todayIso, peakRows = []) {
   };
 }
 
-// Lake Muskoka's outflow at Bala. 02EB006 (Muskoka River below Bala) stopped
-// reporting in 2021; the Moon River gauge at Highway 400 is the live gauge on
-// the water that has just left the lake.
-export const HOME_FLOW = '02EB011';
-
 export function buildOverviewPayload(temp, levels, flow, todayIso) {
   const bala = levels.stations.find(s => s.id === STATION) ?? levels.stations[0];
   return {
@@ -708,13 +703,10 @@ export function buildOverviewPayload(temp, levels, flow, todayIso) {
       swim: temp.swim,
       ageDays: temp.meta.lagDays, years: temp.meta.years,
     },
-    // The home page takes the first of these. It used to be whatever came
-    // first in the station list, which — once the gauge below Bala went dead —
-    // was a river forty kilometres north of the lake. Name the one that
-    // matters for Bala: the Moon River, where Lake Muskoka leaves at Bala.
-    flow: [...flow.stations]
-      .sort((a, b) => (a.id === HOME_FLOW ? -1 : b.id === HOME_FLOW ? 1 : 0))
-      .map(s => ({
+    // Carried for the data file; the home page no longer shows river flow,
+    // because there is no live flow gauge at Bala and the nearest live one is
+    // forty kilometres north of the lake.
+    flow: flow.stations.map(s => ({
         id: s.id, name: s.name, label: s.label,
         date: s.latest.date, value: s.latest.value, percentile: s.percentile,
         vsJulyPct: s.vsJulyPct,

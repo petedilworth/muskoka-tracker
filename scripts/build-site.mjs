@@ -14,7 +14,7 @@ import {
 import {
   loadTemps, loadLevelCache, buildTemperaturePayload, buildAllYearsPayload,
   buildLevelsPayload, buildFlowPayload, buildOverviewPayload, buildRecordsPayload,
-  loadPeaks, loadGaugeLocations, HOME_FLOW,
+  loadPeaks, loadGaugeLocations,
 } from './lib/payloads.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -262,7 +262,7 @@ const inches = (m) => Math.abs(m * 100 / 2.54);
 const inWord = (v) => `${v.toFixed(1)} inch${v.toFixed(1) === '1.0' ? '' : 'es'}`;
 
 function headline(o) {
-  const lvl = o.level, t = o.temp, f = o.flow[0];
+  const lvl = o.level, t = o.temp;
   const parts = [];
   if (lvl) {
     const bits = [];
@@ -298,17 +298,12 @@ function headline(o) {
     }
     parts.push(`The water is <strong>${t.value.toFixed(1)} °C</strong>${rel}${fc}.`);
   }
-  if (f && f.vsJulyPct !== null && f.vsJulyPct !== undefined) {
-    const outflow = f.id === HOME_FLOW;
-    const how = f.vsJulyPct < 50 ? 'low' : f.vsJulyPct > 150 ? 'high' : 'near its summer normal';
-    parts.push(outflow
-      ? `The lake's outflow on the ${esc(f.name)} is running ${how}, at ${f.vsJulyPct}% of its July flow.`
-      : `${esc(f.name)} is running ${how}, at ${f.vsJulyPct}% of its July flow.`);
-  }
+  // No river sentence: there is no live flow gauge at Bala, and the nearest
+  // one is not what a reader of this page is asking about.
   return parts.join(' ');
 }
 
-function indexPage(o, temp, levels, flow, locations) {
+function indexPage(o, temp, levels, locations) {
   const lvl = o.level;
   const t = o.temp;
   const year = parseInt(o.meta.generated.substring(0, 4), 10);
@@ -338,13 +333,6 @@ function indexPage(o, temp, levels, flow, locations) {
         ? `${swim.thisYear - swim.typical} more than a typical year by now`
         : swim.thisYear < swim.typical ? `${swim.typical - swim.thisYear} fewer than a typical year by now` : 'exactly a typical year so far'),
       null, 'temperature.html'),
-    o.flow.length && tile(o.flow[0].id === HOME_FLOW ? 'Lake Muskoka outflow · ' + esc(o.flow[0].name) : 'River flow · ' + esc(o.flow[0].name),
-      o.flow[0].value.toFixed(1), ' m³/s',
-      `${esc(o.flow[0].label)} &middot; ${escDate(o.flow[0].date)}`,
-      o.flow[0].vsJulyPct !== null && o.flow[0].vsJulyPct !== undefined
-        ? `${o.flow[0].vsJulyPct}% of its July average &middot; ${pctLine(o.flow[0].percentile, 'on record')}`
-        : pctLine(o.flow[0].percentile, 'of readings on record'),
-      null, 'flow.html'),
   ].filter(Boolean).join('');
 
   const hero = lvl && lvl.normal && lvl.normal.envelope ? `
@@ -393,7 +381,6 @@ Muskoka.getJSON('data/overview.json').then(function (o) {
     sources: [
       SRC.gauges(levels.stations.filter(st => st.id === STATION), locations, 'level'),
       SRC.temperature(temp.meta),
-      SRC.gauges(flow.stations.filter(st => st.id === o.flow[0]?.id), locations, 'flow'),
       SRC.derived('The July average, "normal for the date", percentiles, swim days and the seven-day outlook'),
     ],
   });
@@ -921,7 +908,7 @@ async function main() {
   await writeJSON('records.json', records);
 
   const pages = {
-    'index.html': indexPage(overview, temp, levels, flow, locations),
+    'index.html': indexPage(overview, temp, levels, locations),
     'temperature.html': temperaturePage(temp),
     'levels.html': stationPage({
       file: 'levels.html', title: 'Muskoka Tracker — water levels',
@@ -931,7 +918,7 @@ async function main() {
     }),
     'flow.html': stationPage({
       file: 'flow.html', title: 'Muskoka Tracker — river flow',
-      heading: 'River flow', sub: 'Discharge on the Muskoka River system: the Big East River near Huntsville, the North and South Branches at Port Sydney and Baysville, and the Moon River where Lake Muskoka drains.',
+      heading: 'River flow', sub: 'Discharge on the Muskoka River system: the Big East River near Huntsville and the North and South Branches at Port Sydney and Baysville.',
       payload: flow, comparison: true, measure: 'flow', locations,
       note: flow.omitted.length ? `<div class="notice">${flow.omitted.map(g =>
         `Gauge ${esc(g.id)} (${esc(g.name)}) is not shown: it stopped reporting after ${escDate(g.lastDate)}.`).join(' ')}</div>` : '',

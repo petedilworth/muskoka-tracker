@@ -47,17 +47,15 @@ const EXTRA_STATIONS = [
 
 // Flow rate stations (discharge in m³/s) — WSC gauges on the rivers.
 // Names follow Environment Canada's own station names, cached in
-// data/history/stations.json. Two were wrong for months: 02EB013 was labelled
-// "Bracebridge, Muskoka River" and is BIG EAST RIVER NEAR HUNTSVILLE, 40 km
-// north; 02EB011 was "Port Carling, Indian River" and is MOON RIVER AT
-// HIGHWAY NO. 400 — the lake's outflow west of Bala, which is a far more
-// interesting gauge than the one it was mistaken for.
+// data/history/stations.json. 02EB013 was labelled "Bracebridge, Muskoka
+// River" for months and is BIG EAST RIVER NEAR HUNTSVILLE, 40 km north. The
+// gauge below Bala (02EB006) stopped reporting in 2021 and is filtered out at
+// build time; there is no live flow gauge at Bala.
 const FLOW_STATIONS = [
   { id: '02EB006', name: 'Bala', label: 'Muskoka River' },
   { id: '02EB013', name: 'Huntsville', label: 'Big East River' },
   { id: '02EB004', name: 'Port Sydney', label: 'N. Branch Muskoka R.' },
   { id: '02EB008', name: 'Baysville', label: 'S. Branch Muskoka R.' },
-  { id: '02EB011', name: 'Moon River', label: 'Lake Muskoka outflow, Hwy 400' },
 ];
 
 // Bala Bay coordinates for satellite SST lookup
