@@ -56,6 +56,45 @@ This repo reports to my Build Pipeline dashboard through ROADMAP.md.
   them. If you can't, don't push, and tell me why.
 - If this repo publishes a website, check the change at phone width first.
 
+## How this project works
+- `.github/workflows/daily-notify.yml` runs at 11:00 UTC: 7am in summer,
+  6am in winter. It runs the tests, then `notify.mjs`, then rebuilds the site
+  and commits `data/` and `docs/`. The site still rebuilds if the email fails.
+- `notify.mjs` gets levels and flow from Environment Canada's open data API
+  (api.weather.gc.ca: `hydrometric-realtime` and `hydrometric-daily-mean`).
+  Water temperature comes from NOAA's MUR satellite data for Bala Bay.
+  It sends the email through Resend. Cost is $0.
+- The gauge lists are at the top of `notify.mjs`. Levels: Bala (02EB015),
+  Beaumaris, Port Carling, Port Sydney, Baysville. Flow: Big East River near
+  Huntsville (02EB013), Port Sydney, Baysville. The flow gauge below Bala
+  (02EB006) stopped in 2021 and is hidden on the site. There is no live flow
+  gauge at Bala.
+- `scripts/build-site.mjs` turns `data/` into the static site in `docs/`,
+  served by GitHub Pages from main `/docs`. It does all the data shaping;
+  `app.js` only formats numbers and draws charts. Chart.js and Leaflet are
+  copied from `node_modules` into `docs/assets/`, not loaded from the web.
+  Paths are relative. Pages carry `noindex` and `robots.txt` blocks crawling.
+- The gauge map uses Leaflet on OpenStreetMap tiles. Gauge positions are
+  cached in `data/history/stations.json`. Without that file the map is left out.
+
+Data:
+- `data/history/` has one CSV per gauge series, back to each gauge's start.
+  `_manifest.json` records which series already have their full history.
+  Normal runs fetch only the last five years.
+- `data/water-temp.csv` is the temperature archive back to 2002. GitHub's
+  servers are often blocked by NOAA's mirrors, so the email may lag a few days.
+- Environment Canada publishes daily means one year at a time, about seven
+  months after the year ends. The live feed keeps about a month. So no gauge
+  has data for 2026-01-01 to 2026-06-06, the whole spring flood. It should
+  fill itself around July 2027. Until then the daily emails are the only record.
+- To recover that gap from the emails: export them from Gmail with Takeout, then
+  `python3 scripts/extract-email-levels.py Takeout/Mail/*.mbox -o data/email-levels.csv`
+  `node scripts/merge-email-levels.mjs data/email-levels.csv` (dry run first)
+  `node scripts/merge-email-levels.mjs data/email-levels.csv --apply`
+  The merge checks the emails against days we already have. It refuses if they
+  differ by more than 2 cm, overlap too little, or fall outside the gauge's range.
+  Environment Canada's official numbers replace email figures when 2026 is published.
+
 ## How to check things here
 - `npm test` runs the unit tests on the data logic. No network, no keys.
   The daily workflow runs them first and stops the email if they fail.
@@ -66,6 +105,11 @@ This repo reports to my Build Pipeline dashboard through ROADMAP.md.
 - `node notify.mjs --dry-run` builds the email into `preview.html` without
   sending. It needs Environment Canada and NOAA, which this sandbox blocks.
 - `npm run smoke` runs the whole notifier offline against fake servers.
+- `node notify.mjs --fetch-only` updates only `data/water-temp.csv`. Run it
+  from a home connection when NOAA blocks GitHub's servers.
+- `node notify.mjs --backfill` fetches every gauge's full history in one go.
+- `node scripts/probe-sources.mjs` (or the "Probe data sources" Action) checks
+  what OPG and DataStream serve. It writes nothing.
 
 Rules for this repo:
 - Never edit files in `docs/` by hand. They are built. Edit `scripts/lib/`
