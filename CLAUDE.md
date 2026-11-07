@@ -112,6 +112,9 @@ Data:
   what OPG and DataStream serve. It writes nothing.
 
 Rules for this repo:
+- There is no README. This file is the only guide to the repo. If a change
+  makes anything here wrong (a gauge, a command, a file, a schedule), fix
+  this file in the same commit.
 - Never edit files in `docs/` by hand. They are built. Edit `scripts/lib/`
   (`app.js`, `site.css`) or `scripts/build-site.mjs`, then rebuild.
 - A bot commits new data to main every morning. Pull right before you push.
