@@ -16,3 +16,4 @@ Done item:  - [x] 2026-11-03 – What got done
 - [ ] Rerun the April 1 vs April peak study once Jan–Jun 2026 data is in
 
 ## Done
+- [x] 2026-11-07 – Add a Spring peak page: April 1 level vs the spring peak at Bala

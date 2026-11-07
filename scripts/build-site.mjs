@@ -13,7 +13,7 @@ import {
 } from '../notify.mjs';
 import {
   loadTemps, loadLevelCache, buildTemperaturePayload, buildAllYearsPayload,
-  buildLevelsPayload, buildFlowPayload, buildOverviewPayload, buildRecordsPayload,
+  buildLevelsPayload, buildFlowPayload, buildOverviewPayload, buildRecordsPayload, buildSpringPayload,
   loadPeaks, loadGaugeLocations,
 } from './lib/payloads.mjs';
 
@@ -31,6 +31,7 @@ const NAV = [
   ['index.html', 'Today'],
   ['temperature.html', 'Temperature'],
   ['levels.html', 'Water levels'],
+  ['spring.html', 'Spring peak'],
   ['flow.html', 'River flow'],
   ['records.html', 'Records'],
   ['about.html', 'About'],
@@ -867,6 +868,130 @@ function aboutPage(temp, levels, flow, locations) {
   });
 }
 
+// ── spring peak ──
+// Does a low April 1 mean a lower spring peak? One dot per year at Bala. The
+// headline is worded from the numbers, so it stays true as years are added.
+function springPage(s, levels, locations) {
+  const bala = levels.stations.filter(st => st.id === s.meta.stationId);
+  const signed = (v) => v === null || v === undefined ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}`;
+  const rP = s.peakFit ? s.peakFit.r : null, rR = s.riseFit ? s.riseFit.r : null;
+  const strength = (r) => r === null ? 'not enough years' : Math.abs(r) < 0.3 ? 'close to none' : Math.abs(r) < 0.6 ? 'moderate' : 'strong';
+
+  let headline;
+  if (rP !== null && rR !== null && Math.abs(rP) < 0.3 && Math.abs(rR) >= 0.6) {
+    headline = `<strong>No.</strong> Whether the lake starts April low or high, the spring peak lands in about the same place: typically <strong>${signed(s.medianPeak)} in</strong> against the July average. What the April 1 level does predict is <strong>how far the lake rises</strong> to get there.`;
+  } else if (rP !== null && rP >= 0.3) {
+    headline = `<strong>Somewhat.</strong> Years that start April higher have tended to peak higher (link ${rP.toFixed(2)} on a scale of −1 to 1). The typical peak is ${signed(s.medianPeak)} in against the July average.`;
+  } else {
+    headline = `The typical spring peak is ${signed(s.medianPeak)} in against the July average. The link between the April 1 level and the peak is ${strength(rP)} (${rP === null ? '—' : rP.toFixed(2)} on a scale of −1 to 1).`;
+  }
+
+  const tiles = [
+    card(`<h2>April 1 → peak</h2><div class="big num">${rP === null ? '—' : rP.toFixed(2)}</div><p class="lede">Link between the April 1 level and the peak, −1 to 1. ${strength(rP)[0].toUpperCase() + strength(rP).slice(1)}.</p>`),
+    card(`<h2>April 1 → rise</h2><div class="big num">${rR === null ? '—' : rR.toFixed(2)}</div><p class="lede">Link between the April 1 level and the rise to the peak. ${strength(rR)[0].toUpperCase() + strength(rR).slice(1)}.</p>`),
+    card(`<h2>Typical peak</h2><div class="big num">${signed(s.medianPeak)}<span class="unit">in</span></div><p class="lede">Median spring peak against the July average, ${s.meta.firstYear}–${s.meta.lastYear}.</p>`),
+  ].join('\n    ');
+
+  // This year
+  const c = s.current;
+  const year = c.year;
+  const bucket = c.bucket ? s.buckets.find(b => b.key === c.bucket) : null;
+  const like = bucket && bucket.n
+    ? ` Past years that started ${bucket.phrase} the July average (${bucket.n}) peaked between ${signed(bucket.min)} and ${signed(bucket.max)} in, typically ${signed(bucket.median)} in.`
+    : '';
+  let now;
+  if (c.status === 'complete') {
+    now = `${year} started April ${signed(c.a)} in against the July average and peaked at ${signed(c.p)} in on ${escDate(c.peakDate)}, a rise of ${signed(c.rise)} in.${like}`;
+  } else if (c.status === 'in-progress') {
+    now = `${year} started April ${signed(c.a)} in against the July average. The peak so far is ${signed(c.p)} in on ${escDate(c.peakDate)}; the spring window runs to May 31.${like}`;
+  } else if (c.status === 'waiting') {
+    now = `${year} started April ${signed(c.a)} in against the July average.${like}`;
+  } else if (s.meta.generated < `${year}-04-01`) {
+    now = `April 1, ${year} hasn't come yet. Once it has, this card will place ${year} among the past years.`;
+  } else {
+    now = `There is no April 1, ${year} reading at Bala yet. Environment Canada publishes each year's daily means about seven months after the year ends, and the realtime feed keeps only a month, so ${year}'s spring will appear here when ${year} is published.`;
+  }
+
+  const curSw = (c.a !== undefined && c.p !== null && c.p !== undefined) ? `${sw('#E07B4C', 'dot')}${year} ` : '';
+
+  const body = `
+  <p class="headline">${headline}</p>
+  <div class="cards tiles">
+    ${tiles}
+  </div>
+
+  <div class="section">
+    <h2>April 1 level against the spring peak</h2>
+    ${chartCard({
+      title: 'Each dot is one year',
+      sub: 'If a low start meant a low peak, the dots would climb from left to right. Both axes are inches from the July average.',
+      id: 'ch-spring-peak',
+      legend: `${sw('#2D6A9F', 'dot')}Year ${sw('transparent', 'dot hollow')}Thinner July benchmark ${curSw}${sw('rgba(45,106,159,0.35)')}Trend ${sw('#5BA88A')}July average`,
+    })}
+  </div>
+
+  <div class="section">
+    <h2>April 1 level against the rise</h2>
+    ${chartCard({
+      title: 'The lower the start, the bigger the rise',
+      sub: 'Rise is the peak minus the April 1 level. A low start means catching up, not staying low.',
+      id: 'ch-spring-rise',
+      legend: `${sw('#2D6A9F', 'dot')}Year ${sw('transparent', 'dot hollow')}Thinner July benchmark ${curSw}${sw('rgba(45,106,159,0.35)')}Trend`,
+    })}
+  </div>
+
+  <div class="section">
+    <h2>By how the year started</h2>
+    ${kvTable(s.buckets.map(b => [
+      esc(b.label),
+      String(b.n),
+      b.n ? `${signed(b.min)} to ${signed(b.max)}` : '—',
+      signed(b.median),
+    ]), ['April 1 vs July avg', 'Years', 'Peak range (in)', 'Typical (in)'])}
+  </div>
+
+  <div class="section">
+    <div class="card">
+      <h2>${year}</h2>
+      <p class="lede">${now}</p>
+    </div>
+  </div>
+
+  <div class="section">
+    ${explain('How this is worked out', `
+      <p>For each year, the <strong>July average</strong> is the mean of every July day in the ${s.meta.julyYears} years before it, the same benchmark the daily email uses, so it is what was known on April 1. The <strong>peak</strong> is the highest daily mean at Bala from April 2 to May 31. The snowmelt crest falls in that window in nearly every year.</p>
+      <code class="formula">start = level(Apr 1) − July avg
+peak  = max(level, Apr 2 … May 31) − July avg
+rise  = peak − start</code>
+      <p>The <strong>link</strong> is a correlation: 1 means the two always move together, −1 means one always goes up as the other goes down, 0 means no pattern. The tiles and trend lines use only the ${s.meta.fullYears} years with a full ${s.meta.julyYears}-year July benchmark. Hollow dots had fewer Julys to average, because the record starts in ${s.meta.firstYear - 1} and some Julys are incomplete.</p>
+      <p>Why it works this way: Lake Muskoka is regulated by the dams at Bala and Port Carling. The level is drawn down over winter to make room for the melt and refilled in spring, so the April 1 level mostly reflects how far it was drawn down. How high the peak goes depends more on snowpack and spring rain, as the flood of 2019 shows.</p>
+      <p>${s.meta.years} years is a small sample, so read the numbers as a pattern, not a forecast.</p>`)}
+    ${explain('Every year', kvTable(s.rows.slice().reverse().map(r => [
+      String(r.year),
+      signed(r.a), signed(r.p), escDate(r.peakDate).replace(/, \d{4}$/, ''), signed(r.rise),
+      `${r.julyYears}`,
+    ]), ['Year', 'Apr 1 (in)', 'Peak (in)', 'Peak date', 'Rise (in)', 'Julys']))}
+  </div>`;
+
+  const script = `
+Muskoka.getJSON('data/spring.json').then(function (s) {
+  Muskoka.charts.springScatter(document.getElementById('ch-spring-peak'), s, 'peak');
+  Muskoka.charts.springScatter(document.getElementById('ch-spring-rise'), s, 'rise');
+});`;
+
+  return page({
+    file: 'spring.html', title: 'Muskoka Tracker — spring peak',
+    heading: 'Does a low April 1 mean a lower spring peak?',
+    sub: `Lake Muskoka at Bala, ${s.meta.firstYear}–${s.meta.lastYear}: the April 1 level against the spring peak.`,
+    body, script,
+    sources: [
+      SRC.gauges(bala, locations, 'level'),
+      SRC.derived('The July benchmark, starts, peaks, rises, links and trend lines'),
+      SRC.regulation(),
+    ],
+  });
+}
+
 // ── build ──
 
 async function writeJSON(name, obj) {
@@ -889,6 +1014,7 @@ async function main() {
   const flow = buildFlowPayload(cache, TODAY_ISO);
   const overview = buildOverviewPayload(temp, levels, flow, TODAY_ISO);
   const records = buildRecordsPayload(temps, cache, TODAY_ISO, peakRows);
+  const spring = buildSpringPayload(cache, TODAY_ISO);
 
   console.log(`  ${temps.length} temperature readings, ${temp.meta.years} years`);
   console.log(`  ${levels.stations.length} level gauges, ${flow.stations.length} flow gauges` +
@@ -906,6 +1032,7 @@ async function main() {
   await writeJSON('levels.json', levels);
   await writeJSON('flow.json', flow);
   await writeJSON('records.json', records);
+  if (spring) await writeJSON('spring.json', spring);
 
   const pages = {
     'index.html': indexPage(overview, temp, levels, locations),
@@ -923,6 +1050,7 @@ async function main() {
       note: flow.omitted.length ? `<div class="notice">${flow.omitted.map(g =>
         `Gauge ${esc(g.id)} (${esc(g.name)}) is not shown: it stopped reporting after ${escDate(g.lastDate)}.`).join(' ')}</div>` : '',
     }),
+    ...(spring ? { 'spring.html': springPage(spring, levels, locations) } : {}),
     'records.html': recordsPage(records, temp, locations),
     'about.html': aboutPage(temp, levels, flow, locations),
   };

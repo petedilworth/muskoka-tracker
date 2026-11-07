@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Public gauge data, but this is a personal dashboard — keep it out of search results. -->
+<meta name="robots" content="noindex, nofollow">
+<title>Muskoka Tracker — spring peak</title>
+<!-- Inline so the browser never fires a request for /favicon.ico -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8C%8A%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <div class="brand">
+      <h1>🌊 Muskoka Tracker</h1>
+      <span class="sub">Lake Muskoka &amp; Rosseau water conditions</span>
+    </div>
+    <nav class="site">
+      <a href="index.html">Today</a>
+      <a href="temperature.html">Temperature</a>
+      <a href="levels.html">Water levels</a>
+      <a href="spring.html" aria-current="page">Spring peak</a>
+      <a href="flow.html">River flow</a>
+      <a href="records.html">Records</a>
+      <a href="about.html">About</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+  <h2 style="margin:0 0 2px;font-size:22px;">Does a low April 1 mean a lower spring peak?</h2>
+  <p style="margin:0 0 18px;color:var(--muted);font-size:13px;">Lake Muskoka at Bala, 2004–2025: the April 1 level against the spring peak.</p>
+
+  <p class="headline"><strong>No.</strong> Whether the lake starts April low or high, the spring peak lands in about the same place: typically <strong>+6.3 in</strong> against the July average. What the April 1 level does predict is <strong>how far the lake rises</strong> to get there.</p>
+  <div class="cards tiles">
+    <div class="card"><h2>April 1 → peak</h2><div class="big num">-0.12</div><p class="lede">Link between the April 1 level and the peak, −1 to 1. Close to none.</p></div>
+    <div class="card"><h2>April 1 → rise</h2><div class="big num">-0.92</div><p class="lede">Link between the April 1 level and the rise to the peak. Strong.</p></div>
+    <div class="card"><h2>Typical peak</h2><div class="big num">+6.3<span class="unit">in</span></div><p class="lede">Median spring peak against the July average, 2004–2025.</p></div>
+  </div>
+
+  <div class="section">
+    <h2>April 1 level against the spring peak</h2>
+    <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <div class="chart-title">Each dot is one year</div>
+        <div class="chart-sub">If a low start meant a low peak, the dots would climb from left to right. Both axes are inches from the July average.</div>
+      </div>
+      
+    </div>
+    <div class="chart-box"><canvas id="ch-spring-peak"></canvas></div>
+    <div class="legend"><span class="swatch dot" style="background:#2D6A9F"></span>Year <span class="swatch dot hollow" style="background:transparent"></span>Thinner July benchmark <span class="swatch " style="background:rgba(45,106,159,0.35)"></span>Trend <span class="swatch " style="background:#5BA88A"></span>July average</div>
+  </div>
+  </div>
+
+  <div class="section">
+    <h2>April 1 level against the rise</h2>
+    <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <div class="chart-title">The lower the start, the bigger the rise</div>
+        <div class="chart-sub">Rise is the peak minus the April 1 level. A low start means catching up, not staying low.</div>
+      </div>
+      
+    </div>
+    <div class="chart-box"><canvas id="ch-spring-rise"></canvas></div>
+    <div class="legend"><span class="swatch dot" style="background:#2D6A9F"></span>Year <span class="swatch dot hollow" style="background:transparent"></span>Thinner July benchmark <span class="swatch " style="background:rgba(45,106,159,0.35)"></span>Trend</div>
+  </div>
+  </div>
+
+  <div class="section">
+    <h2>By how the year started</h2>
+    <div class="table-scroll"><table class="kv">
+    <tr><th>April 1 vs July avg</th><th>Years</th><th>Peak range (in)</th><th>Typical (in)</th></tr>
+    <tr><td>More than 24 in below</td><td class="n">9</td><td class="n">−0.7 to +28.4</td><td class="n">+5.9</td></tr>
+    <tr><td>6–24 in below</td><td class="n">8</td><td class="n">+3.6 to +16.9</td><td class="n">+7.3</td></tr>
+    <tr><td>Within 6 in</td><td class="n">5</td><td class="n">+4.5 to +11.1</td><td class="n">+6.3</td></tr>
+  </table></div>
+  </div>
+
+  <div class="section">
+    <div class="card">
+      <h2>2026</h2>
+      <p class="lede">There is no April 1, 2026 reading at Bala yet. Environment Canada publishes each year's daily means about seven months after the year ends, and the realtime feed keeps only a month, so 2026's spring will appear here when 2026 is published.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <details class="explain"><summary>How this is worked out</summary><div class="body">
+      <p>For each year, the <strong>July average</strong> is the mean of every July day in the 5 years before it, the same benchmark the daily email uses, so it is what was known on April 1. The <strong>peak</strong> is the highest daily mean at Bala from April 2 to May 31. The snowmelt crest falls in that window in nearly every year.</p>
+      <code class="formula">start = level(Apr 1) − July avg
+peak  = max(level, Apr 2 … May 31) − July avg
+rise  = peak − start</code>
+      <p>The <strong>link</strong> is a correlation: 1 means the two always move together, −1 means one always goes up as the other goes down, 0 means no pattern. The tiles and trend lines use only the 17 years with a full 5-year July benchmark. Hollow dots had fewer Julys to average, because the record starts in 2003 and some Julys are incomplete.</p>
+      <p>Why it works this way: Lake Muskoka is regulated by the dams at Bala and Port Carling. The level is drawn down over winter to make room for the melt and refilled in spring, so the April 1 level mostly reflects how far it was drawn down. How high the peak goes depends more on snowpack and spring rain, as the flood of 2019 shows.</p>
+      <p>22 years is a small sample, so read the numbers as a pattern, not a forecast.</p></div></details>
+    <details class="explain"><summary>Every year</summary><div class="body"><div class="table-scroll"><table class="kv">
+    <tr><th>Year</th><th>Apr 1 (in)</th><th>Peak (in)</th><th>Peak date</th><th>Rise (in)</th><th>Julys</th></tr>
+    <tr><td>2025</td><td class="n">0.0</td><td class="n">+6.3</td><td class="n">Apr 7</td><td class="n">+6.3</td><td class="n">4</td></tr>
+    <tr><td>2024</td><td class="n">+2.8</td><td class="n">+9.0</td><td class="n">Apr 18</td><td class="n">+6.2</td><td class="n">5</td></tr>
+    <tr><td>2023</td><td class="n">−33.0</td><td class="n">+8.7</td><td class="n">Apr 26</td><td class="n">+41.7</td><td class="n">5</td></tr>
+    <tr><td>2022</td><td class="n">−23.6</td><td class="n">+5.4</td><td class="n">Apr 27</td><td class="n">+29.1</td><td class="n">5</td></tr>
+    <tr><td>2021</td><td class="n">−23.0</td><td class="n">+3.6</td><td class="n">May 4</td><td class="n">+26.5</td><td class="n">5</td></tr>
+    <tr><td>2020</td><td class="n">−20.8</td><td class="n">+9.6</td><td class="n">May 5</td><td class="n">+30.4</td><td class="n">5</td></tr>
+    <tr><td>2019</td><td class="n">−32.4</td><td class="n">+28.4</td><td class="n">May 3</td><td class="n">+60.8</td><td class="n">5</td></tr>
+    <tr><td>2018</td><td class="n">−30.7</td><td class="n">+3.3</td><td class="n">May 11</td><td class="n">+34.1</td><td class="n">5</td></tr>
+    <tr><td>2017</td><td class="n">−21.6</td><td class="n">+7.7</td><td class="n">Apr 21</td><td class="n">+29.3</td><td class="n">5</td></tr>
+    <tr><td>2016</td><td class="n">+0.7</td><td class="n">+11.1</td><td class="n">Apr 10</td><td class="n">+10.5</td><td class="n">5</td></tr>
+    <tr><td>2015</td><td class="n">−35.2</td><td class="n">+5.9</td><td class="n">May 1</td><td class="n">+41.1</td><td class="n">5</td></tr>
+    <tr><td>2014</td><td class="n">−34.1</td><td class="n">+6.2</td><td class="n">Apr 27</td><td class="n">+40.3</td><td class="n">5</td></tr>
+    <tr><td>2013</td><td class="n">−22.9</td><td class="n">+16.9</td><td class="n">Apr 27</td><td class="n">+39.7</td><td class="n">5</td></tr>
+    <tr><td>2012</td><td class="n">−2.2</td><td class="n">+5.7</td><td class="n">May 7</td><td class="n">+7.9</td><td class="n">5</td></tr>
+    <tr><td>2011</td><td class="n">−27.5</td><td class="n">+5.2</td><td class="n">Apr 27</td><td class="n">+32.7</td><td class="n">5</td></tr>
+    <tr><td>2010</td><td class="n">+3.0</td><td class="n">+4.5</td><td class="n">May 10</td><td class="n">+1.5</td><td class="n">5</td></tr>
+    <tr><td>2009</td><td class="n">−19.4</td><td class="n">+6.8</td><td class="n">Apr 21</td><td class="n">+26.2</td><td class="n">5</td></tr>
+    <tr><td>2008</td><td class="n">−35.8</td><td class="n">+7.5</td><td class="n">Apr 22</td><td class="n">+43.3</td><td class="n">5</td></tr>
+    <tr><td>2007</td><td class="n">−8.4</td><td class="n">+8.7</td><td class="n">Apr 10</td><td class="n">+17.1</td><td class="n">4</td></tr>
+    <tr><td>2006</td><td class="n">−24.1</td><td class="n">+4.2</td><td class="n">May 18</td><td class="n">+28.2</td><td class="n">3</td></tr>
+    <tr><td>2005</td><td class="n">−38.8</td><td class="n">−0.7</td><td class="n">Apr 25</td><td class="n">+38.1</td><td class="n">2</td></tr>
+    <tr><td>2004</td><td class="n">−19.2</td><td class="n">+4.6</td><td class="n">May 7</td><td class="n">+23.8</td><td class="n">1</td></tr>
+  </table></div></div></details>
+  </div>
+  <section class="sources">
+    <h2>Sources for this page</h2>
+    <ul>
+      <li><strong>Water level</strong> —
+    Environment and Climate Change Canada, Water Survey of Canada gauges via the
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean">MSC GeoMet hydrometric daily-mean</a> and
+    <a href="https://api.weather.gc.ca/collections/hydrometric-realtime">realtime</a> collections.
+    Daily means are the published record; realtime readings, averaged to a day, fill the months the daily means have not yet reached.<br>
+    <a href="https://api.weather.gc.ca/collections/hydrometric-daily-mean/items?STATION_NUMBER=02EB015&limit=10">02EB015</a> Bala <span class="official">BALA BAY AT BALA</span> &middot; Jan 1, 2003 – Nov 6, 2026, 8,525 days</li>
+      <li><strong>Derived figures</strong> — The July benchmark, starts, peaks, rises, links and trend lines are computed by this site from the series above; the formulas are in the explainers on the page.</li>
+      <li><strong>Lake regulation</strong> — Lake Muskoka's level is set by dams at Bala and Port Carling under Ontario's Muskoka River Water Management Plan. Nothing here is adjusted for that; these are the gauge readings as published.</li>
+    </ul>
+  </section>
+  <footer class="site">
+    Rebuilt automatically each morning. Generated 2026-11-06.
+    Full detail on every source is on the <a href="about.html">about page</a>.
+  </footer>
+</main>
+<script src="assets/chart.umd.js"></script>
+
+<script src="assets/app.js"></script>
+<script>
+
+Muskoka.getJSON('data/spring.json').then(function (s) {
+  Muskoka.charts.springScatter(document.getElementById('ch-spring-peak'), s, 'peak');
+  Muskoka.charts.springScatter(document.getElementById('ch-spring-rise'), s, 'rise');
+});
+</script>
+</body>
+</html>

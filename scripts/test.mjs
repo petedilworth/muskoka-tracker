@@ -17,6 +17,7 @@ import {
   buildLevelsPayload, buildFlowPayload, buildRecordsPayload,
   dayOfYearEnvelope, withDayOfYear, extremes, biggestSwings, longestStreak, onThisDate,
   coverageGaps, recentCoverageGaps, peaksFor, swimDays,
+  springRows, pearson,
 } from './lib/payloads.mjs';
 
 let passed = 0;
@@ -582,6 +583,53 @@ test('swim days respects the cutoff day', () => {
   for (let d = 1; d <= 200; d++) recs.push(rec(`2026-${String(new Date(Date.UTC(2026,0,d)).getUTCMonth()+1).padStart(2,'0')}-${String(new Date(Date.UTC(2026,0,d)).getUTCDate()).padStart(2,'0')}`, 25));
   assert.equal(swimDays(recs, 2026, 100).thisYear, 100);
   assert.equal(swimDays(recs, 2026, 100).typical, null, 'no other years, no typical');
+});
+
+// ── spring peak study ──
+// A synthetic gauge: July sits at 10.00 every year, April 1 varies, and the
+// spring peak is always 10.20. So the start should predict the rise exactly
+// and the peak not at all.
+function springGauge(years, april1, opts = {}) {
+  const days = [];
+  for (const y of years) {
+    for (let d = 1; d <= 31; d++) days.push({ date: `${y}-07-${String(d).padStart(2, '0')}`, value: 10 });
+    const a1 = april1(y);
+    days.push({ date: `${y}-04-01`, value: a1 });
+    const last = opts.lastSpringDay?.(y) ?? '05-31';
+    for (let d = 1; d <= 60; d++) {
+      const date = addDays(`${y}-04-01`, d);
+      if (date.substring(5) > last) break;
+      days.push({ date, value: date.substring(5) === '04-20' ? 10.2 : a1 + 0.05 });
+    }
+  }
+  return days.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+test('spring rows measure start, peak and rise against the five Julys before', () => {
+  const days = springGauge([2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023], y => 9.5 + (y % 3) * 0.1);
+  const { rows } = springRows(days, 2030);
+  const r2020 = rows.find(r => r.year === 2020);
+  assert.equal(r2020.julyYears, 5);
+  assert.equal(r2020.julyAvg, 10);
+  assert.equal(r2020.peakDate, '2020-04-20');
+  assert.equal(r2020.p, Math.round(20 / 2.54 * 10) / 10, 'peak 20 cm above July');
+  assert.equal(r2020.a, Math.round((9.5 + (2020 % 3) * 0.1 - 10) * 100 / 2.54 * 10) / 10);
+  assert.ok(!rows.some(r => r.year === 2015), 'the first year has no earlier July');
+  const full = rows.filter(r => r.julyYears === 5);
+  assert.ok(Math.abs(pearson(full.map(r => r.a), full.map(r => r.rise)) + 1) < 0.01, 'start predicts rise');
+});
+
+test('an unfinished spring is the current year, not a row', () => {
+  const days = springGauge([2020, 2021, 2022], () => 9.6, { lastSpringDay: y => (y === 2022 ? '04-25' : '05-31') });
+  const { rows, current } = springRows(days, 2022);
+  assert.ok(!rows.some(r => r.year === 2022));
+  assert.equal(current.status, 'in-progress');
+  assert.equal(current.peakDate, '2022-04-20');
+});
+
+test('a missing April 1 leaves the current year without a point', () => {
+  const days = springGauge([2020, 2021], () => 9.6).concat([{ date: '2022-06-10', value: 10 }]);
+  assert.equal(springRows(days, 2022).current.status, 'no-april1');
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ', 0 failed'}`);

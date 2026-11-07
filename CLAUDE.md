@@ -74,6 +74,12 @@ This repo reports to my Build Pipeline dashboard through ROADMAP.md.
   `app.js` only formats numbers and draws charts. Chart.js and Leaflet are
   copied from `node_modules` into `docs/assets/`, not loaded from the web.
   Paths are relative. Pages carry `noindex` and `robots.txt` blocks crawling.
+- The Spring peak page (`spring.html`) asks whether a low April 1 level at
+  Bala means a lower spring peak. `buildSpringPayload` in
+  `scripts/lib/payloads.mjs` works it out each build: each year's April 1
+  level and highest level from April 2 to May 31, both against the five
+  Julys before that year. The headline is worded from the numbers, so it
+  changes if new years change the answer.
 - The gauge map uses Leaflet on OpenStreetMap tiles. Gauge positions are
   cached in `data/history/stations.json`. Without that file the map is left out.
 

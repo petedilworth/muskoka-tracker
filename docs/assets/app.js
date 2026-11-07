@@ -557,6 +557,98 @@
     return new Chart(canvas, { type: 'line', data: { datasets: ds }, options: o });
   }
 
+  // ── spring peak scatter ──
+  // One dot per year: April 1 level (x) against either the spring peak or the
+  // rise to it (y), both in inches from the July benchmark. Years with a thin
+  // benchmark are hollow; the current year, if it has a point, is orange. The
+  // trend line and named years come from the generator.
+  //
+  //   which: 'peak' | 'rise'
+  var yearLabels = {
+    id: 'yearLabels',
+    afterDatasetsDraw: function (chart) {
+      var names = chart.options.plugins.yearLabels && chart.options.plugins.yearLabels.years;
+      if (!names || !names.length) return;
+      var ctx = chart.ctx;
+      ctx.save();
+      ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = C.muted; ctx.textBaseline = 'middle';
+      chart.data.datasets.forEach(function (ds, i) {
+        if (!ds.years) return;
+        chart.getDatasetMeta(i).data.forEach(function (pt, j) {
+          var y = ds.years[j];
+          if (names.indexOf(y) === -1) return;
+          var right = pt.x < chart.chartArea.left + chart.chartArea.width * 0.7;
+          ctx.textAlign = right ? 'left' : 'right';
+          ctx.fillText(String(y), pt.x + (right ? 9 : -9), pt.y);
+        });
+      });
+      ctx.restore();
+    }
+  };
+
+  function springScatter(canvas, s, which) {
+    var key = which === 'rise' ? 'rise' : 'p';
+    var fit = which === 'rise' ? s.riseFit : s.peakFit;
+    var full = s.rows.filter(function (r) { return r.julyYears === s.meta.julyYears && r.year !== s.current.year; });
+    var thin = s.rows.filter(function (r) { return r.julyYears !== s.meta.julyYears && r.year !== s.current.year; });
+    var cur = (s.current && s.current.a !== undefined && s.current.a !== null && s.current[key] !== null) ? [s.current] : [];
+    var pts = function (rs) { return rs.map(function (r) { return { x: r.a, y: r[key] }; }); };
+    var xs = s.rows.map(function (r) { return r.a; });
+    var ys = s.rows.map(function (r) { return r[key]; });
+    // Round the padded bounds out to whole 5s so the edge ticks are round numbers.
+    var round5 = function (b) { return { min: Math.floor(b.min / 5) * 5, max: Math.ceil(b.max / 5) * 5 }; };
+    var bx = round5(pad(xs, [0], 0.04, 1)), by = round5(pad(ys, [0], 0.08, 1));
+    var datasets = [
+      { label: 'Year', years: full.map(function (r) { return r.year; }), rows: full, data: pts(full),
+        backgroundColor: C.blue, borderColor: '#fff', borderWidth: 1.5, pointRadius: 5, pointHoverRadius: 7 },
+      { label: 'Year (thin July benchmark)', years: thin.map(function (r) { return r.year; }), rows: thin, data: pts(thin),
+        backgroundColor: '#fff', borderColor: C.blue, borderWidth: 2, pointRadius: 4.5, pointHoverRadius: 6.5 }
+    ];
+    if (cur.length) datasets.push({
+      label: 'This year', years: [s.current.year], rows: cur, data: pts(cur),
+      backgroundColor: C.orange, borderColor: '#fff', borderWidth: 1.5, pointRadius: 6, pointHoverRadius: 8
+    });
+    if (fit) datasets.push({
+      type: 'line', label: 'Trend', data: [bx.min, bx.max].map(function (x) { return { x: x, y: fit.slope * x + fit.intercept }; }),
+      borderColor: 'rgba(45,106,159,0.35)', borderWidth: 2, pointRadius: 0, pointHitRadius: 0, fill: false
+    });
+    if (which !== 'rise') datasets.push({
+      type: 'line', label: 'July average', data: [{ x: bx.min, y: 0 }, { x: bx.max, y: 0 }],
+      borderColor: C.green, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, pointHitRadius: 0, fill: false
+    });
+    var o = baseOptions({
+      xMin: bx.min, xMax: bx.max, yMin: by.min, yMax: by.max, yHard: true,
+      yLabel: which === 'rise' ? 'rise from April 1 to peak (in)' : 'spring peak vs July avg (in)',
+      yFormat: 'signed1', xTicks: 8,
+      xTick: function (v) { return fmt(v, 'signed1').replace('.0', ''); }
+    });
+    o.scales.y.ticks.callback = function (v) { return fmt(v, 'signed1').replace('.0', ''); };
+    o.scales.x.title = { display: true, text: 'April 1 level vs July avg (in)', font: { size: 10 }, color: C.muted };
+    o.scales.x.grid = { color: function (ctx) { return ctx.tick.value === 0 ? C.axis : C.grid; }, drawBorder: true, borderColor: C.axis };
+    o.interaction = { mode: 'nearest', intersect: true };
+    o.plugins.yearLabels = { years: (s.labels && s.labels[which === 'rise' ? 'rise' : 'peak']) || [] };
+    o.plugins.tooltip.filter = function (item) { return !!item.dataset.rows; };
+    o.plugins.tooltip.displayColors = false;
+    o.plugins.tooltip.callbacks = {
+      title: function (items) {
+        var r = items[0].dataset.rows[items[0].dataIndex];
+        return r.year + (r.status === 'in-progress' ? ' (spring not over yet)' : '');
+      },
+      label: function (ctx) {
+        var r = ctx.dataset.rows[ctx.dataIndex];
+        var lines = [
+          'April 1: ' + fmt(r.a, 'signed1') + ' in vs July avg',
+          (r.status === 'in-progress' ? 'Peak so far ' : 'Peak ') + shortDate(r.peakDate) + ': ' + fmt(r.p, 'signed1') + ' in',
+          'Rise: ' + fmt(r.rise, 'signed1') + ' in'
+        ];
+        if (r.julyYears !== s.meta.julyYears) lines.push('Benchmark from ' + r.julyYears + ' July' + (r.julyYears === 1 ? '' : 's'));
+        return lines;
+      }
+    };
+    return new Chart(canvas, { type: 'scatter', data: { datasets: datasets }, options: o, plugins: [yearLabels] });
+  }
+
   // ── wiring ──
 
   function toggleGroup(el, onPick) {
@@ -585,7 +677,7 @@
       seasonal: seasonal, seasonalFromStation: seasonalFromStation,
       tempClimatology: tempClimatology, tempAllYears: tempAllYears,
       tempAnomaly: tempAnomaly, datedSeries: datedSeries, comparison: comparison,
-      yearBars: yearBars
+      yearBars: yearBars, springScatter: springScatter
     },
     gaugeMap: gaugeMap,
     toggleGroup: toggleGroup, getJSON: getJSON

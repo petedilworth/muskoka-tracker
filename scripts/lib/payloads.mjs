@@ -713,3 +713,150 @@ export function buildOverviewPayload(temp, levels, flow, todayIso) {
       })),
   };
 }
+
+// ── spring peak study ──
+// Does the lake's level on April 1 say how high the spring peak will go? Each
+// year is measured against the same benchmark the email uses: the mean of every
+// July day in the five years BEFORE that year, so the benchmark is what was
+// known on April 1. The peak is the highest daily mean from April 2 to May 31,
+// which catches the snowmelt crest in nearly every year (it lands in April
+// about half the time and in May most of the rest).
+//
+// The answer so far (2004–2025): the April 1 level predicts how far the lake
+// rises, not how high it peaks. The page words its headline from the numbers,
+// so if more years change that, the page says so.
+
+export const SPRING = {
+  stationId: STATION,
+  from: '04-02', to: '05-31',
+  minSpringDays: 55,      // of the 60 days, for a year's peak to count
+  julyYears: JULY_AVG_YEARS,
+  minJulyDays: 25,        // for a July to count toward a benchmark
+  nearIn: 6,              // "starts near the July average": within 6 in
+  farIn: 24,              // "starts far below": more than 2 ft below
+};
+
+const toIn = (m) => r1(m * 100 / CM_PER_INCH);
+
+export function pearson(xs, ys) {
+  const n = xs.length;
+  if (n < 3) return null;
+  const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) {
+    sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2;
+  }
+  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : null;
+}
+
+export function linearFit(xs, ys) {
+  const n = xs.length;
+  if (n < 3) return null;
+  const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+  let sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
+  if (!sxx) return null;
+  const slope = sxy / sxx;
+  return { slope, intercept: my - slope * mx };
+}
+
+// One row per year with a usable April 1, July benchmark and complete spring.
+// The current year is returned separately, because it is usually unfinished.
+export function springRows(days, currentYear, cfg = SPRING) {
+  const byYear = new Map();
+  for (const d of days) {
+    const y = parseInt(d.date.substring(0, 4), 10);
+    if (!byYear.has(y)) byYear.set(y, new Map());
+    byYear.get(y).set(d.date.substring(5), d.value);
+  }
+  const julyDays = new Map();
+  for (const [y, m] of byYear) {
+    const vals = [...m].filter(([md]) => md.startsWith('07-')).map(([, v]) => v);
+    if (vals.length >= cfg.minJulyDays) julyDays.set(y, vals);
+  }
+
+  const rows = [];
+  let current = { year: currentYear, status: 'no-data' };
+  for (const y of [...byYear.keys()].sort((a, b) => a - b)) {
+    if (y > currentYear) continue;
+    const prior = [];
+    for (let p = y - cfg.julyYears; p < y; p++) if (julyDays.has(p)) prior.push(p);
+    const m = byYear.get(y);
+    const april1 = m.get('04-01');
+    const spring = [...m].filter(([md]) => md >= cfg.from && md <= cfg.to);
+    const isCurrent = y === currentYear;
+    if (prior.length === 0 || april1 === undefined) {
+      if (isCurrent) current = { year: y, status: april1 === undefined ? 'no-april1' : 'no-benchmark' };
+      continue;
+    }
+    const pool = prior.flatMap(p => julyDays.get(p));
+    const ref = pool.reduce((a, b) => a + b, 0) / pool.length;
+    const top = spring.reduce((best, e) => (best === null || e[1] > best[1] ? e : best), null);
+    const row = {
+      year: y, julyYears: prior.length, julyAvg: r3(ref), april1: r3(april1),
+      a: toIn(april1 - ref),
+      peak: top && r3(top[1]), peakDate: top && `${y}-${top[0]}`,
+      p: top && toIn(top[1] - ref), rise: top && toIn(top[1] - april1),
+      springDays: spring.length,
+    };
+    if (spring.length >= cfg.minSpringDays) {
+      rows.push(row);
+      if (isCurrent) current = { ...row, status: 'complete' };
+    } else if (isCurrent) {
+      current = { ...row, status: top ? 'in-progress' : 'waiting' };
+    }
+  }
+  return { rows, current };
+}
+
+export function buildSpringPayload(cache, todayIso, cfg = SPRING) {
+  const currentYear = parseInt(todayIso.substring(0, 4), 10);
+  const days = seriesFrom(cache, `level:${cfg.stationId}`);
+  const { rows, current } = springRows(days, currentYear, cfg);
+  if (rows.length < 3) return null;
+
+  // Correlations and trend lines use only years with a full five-July benchmark,
+  // so a thin early benchmark can't tilt them. Every year is still plotted.
+  const full = rows.filter(r => r.julyYears === cfg.julyYears);
+  const fit = (k) => {
+    const f = linearFit(full.map(r => r.a), full.map(r => r[k]));
+    const r = pearson(full.map(r => r.a), full.map(r => r[k]));
+    return f && { slope: r3(f.slope), intercept: r1(f.intercept), r: Math.round(r * 100) / 100 };
+  };
+
+  const bucketDefs = [
+    ['far', `More than ${cfg.farIn} in below`, r => r.a < -cfg.farIn, `more than ${cfg.farIn} in below`],
+    ['below', `${cfg.nearIn}–${cfg.farIn} in below`, r => r.a >= -cfg.farIn && r.a < -cfg.nearIn, `${cfg.nearIn}–${cfg.farIn} in below`],
+    ['near', `Within ${cfg.nearIn} in`, r => r.a >= -cfg.nearIn, `within ${cfg.nearIn} in of`],
+  ];
+  const buckets = bucketDefs.map(([key, label, test, phrase]) => {
+    const rs = rows.filter(test);
+    const ps = rs.map(r => r.p).sort((x, y) => x - y);
+    return {
+      key, label, phrase, n: rs.length, years: rs.map(r => r.year),
+      min: ps[0] ?? null, median: r1(quantile(ps, 0.5)), max: ps[ps.length - 1] ?? null,
+    };
+  });
+  const bucketOf = (a) => bucketDefs.find(([, , t]) => t({ a }))[0];
+
+  // Years worth naming on the charts: the extremes of each measure.
+  const pick = (k, n) => [...rows].sort((x, y) => y[k] - x[k]).slice(0, n).map(r => r.year);
+  const pickLow = (k, n) => [...rows].sort((x, y) => x[k] - y[k]).slice(0, n).map(r => r.year);
+
+  return {
+    meta: {
+      generated: todayIso, stationId: cfg.stationId, from: cfg.from, to: cfg.to,
+      julyYears: cfg.julyYears, firstYear: rows[0].year, lastYear: rows[rows.length - 1].year,
+      years: rows.length, fullYears: full.length,
+    },
+    rows,
+    current: { ...current, bucket: current.a !== undefined ? bucketOf(current.a) : null },
+    peakFit: fit('p'), riseFit: fit('rise'),
+    medianPeak: r1(quantile(rows.map(r => r.p).sort((x, y) => x - y), 0.5)),
+    buckets,
+    labels: {
+      peak: [...new Set([...pick('p', 2), ...pickLow('p', 1)])],
+      rise: [...new Set([...pick('rise', 1), ...pickLow('rise', 1)])],
+    },
+  };
+}
