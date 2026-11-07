@@ -13,5 +13,6 @@ Done item:  - [x] 2026-11-03 – What got done
 - [ ] Add OPG and DataStream data once the probe Action shows what they serve
 - [ ] Recover Jan–Jun 2026 lake levels from the daily emails (Gmail Takeout)
 - [ ] Fix preview-charts.mjs: it reads data/level-history.json, which is gone
+- [ ] Rerun the April 1 vs April peak study once Jan–Jun 2026 data is in
 
 ## Done
